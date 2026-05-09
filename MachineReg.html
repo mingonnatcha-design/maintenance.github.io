@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MachineReg — ระบบทะเบียนเครื่องจักร</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--c1:#1a1f2e;--c2:#242938;--c3:#2d3347;--c4:#363d55;
+--acc:#4f8ef7;--acc2:#7c5cfc;--grn:#22c55e;--red:#ef4444;--amb:#f59e0b;
+--txt:#e8ecf4;--txt2:#9aa3b8;--txt3:#5a6379;
+--br:10px;--br2:14px;
+}
+body{background:var(--c1);color:var(--txt);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh}
+h2{font-size:20px;font-weight:600}h3{font-size:15px;font-weight:600}
+
+/* ===== LOGIN ===== */
+#login-screen{position:fixed;inset:0;background:var(--c1);display:flex;align-items:center;justify-content:center;z-index:9999}
+#login-screen.hidden{display:none}
+.login-box{background:var(--c2);border:0.5px solid var(--c4);border-radius:20px;padding:40px 36px;width:380px;max-width:95vw}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo-icon{width:56px;height:56px;border-radius:16px;background:rgba(79,142,247,.18);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;color:var(--acc)}
+.login-logo-title{font-size:20px;font-weight:700;color:var(--txt)}
+.login-logo-sub{font-size:12px;color:var(--txt3);margin-top:3px}
+.login-field{margin-bottom:14px}
+.login-field label{font-size:12px;color:var(--txt2);display:block;margin-bottom:5px}
+.login-field input,.login-field select{background:var(--c3);border:0.5px solid var(--c4);border-radius:8px;padding:10px 14px;color:var(--txt);font-size:13px;width:100%;outline:none;font-family:inherit}
+.login-field input:focus,.login-field select:focus{border-color:var(--acc)}
+.login-btn{width:100%;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;padding:11px;cursor:pointer;margin-top:6px;transition:background .15s}
+.login-btn:hover{background:#3a7be0}
+.login-error{font-size:12px;color:var(--red);margin-top:8px;text-align:center;display:none}
+.login-role-hint{font-size:11px;color:var(--txt3);text-align:center;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--c3)}
+
+/* ===== SYNC STATUS ===== */
+.sync-indicator{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--txt3);transition:background .3s}
+.sync-dot.connected{background:var(--grn);animation:pulse 2s infinite}
+.sync-dot.syncing{background:var(--amb);animation:spin-dot .6s linear infinite}
+.sync-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes spin-dot{0%{transform:scale(1)}50%{transform:scale(1.5)}100%{transform:scale(1)}}
+
+/* ===== SETUP FIREBASE MODAL ===== */
+.firebase-setup{background:var(--c2);border:0.5px solid var(--c4);border-radius:16px;padding:24px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.firebase-setup h3{margin-bottom:6px}
+.firebase-setup p{font-size:12px;color:var(--txt2);margin-bottom:16px;line-height:1.6}
+.setup-step{background:var(--c3);border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;color:var(--txt2);line-height:1.7}
+.setup-step strong{color:var(--acc)}
+
+.app{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--c2);border-right:0.5px solid var(--c4);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:20px 18px;border-bottom:0.5px solid var(--c4)}
+.logo-title{font-size:15px;font-weight:700;color:var(--txt)}
+.logo-sub{font-size:11px;color:var(--txt3);margin-top:2px}
+.nav{padding:12px 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--br);cursor:pointer;color:var(--txt2);font-size:13px;transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:var(--c3);color:var(--txt)}
+.nav-item.active{background:var(--acc);color:#fff}
+.nav-item i{font-size:17px;width:20px;text-align:center}
+.nav-item.disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.nav-section{font-size:10px;color:var(--txt3);padding:14px 10px 6px;text-transform:uppercase;letter-spacing:.8px}
+.main{flex:1;overflow:auto;background:var(--c1)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:0.5px solid var(--c3);background:var(--c2);position:sticky;top:0;z-index:10}
+.page-title{font-size:18px;font-weight:600}
+.topbar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{padding:7px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--acc);color:#fff}.btn-primary:hover{background:#3a7be0}
+.btn-danger{background:rgba(239,68,68,.15);color:#f87171;border:none}
+.btn-ghost{background:transparent;border:0.5px solid var(--c4);color:var(--txt2)}.btn-ghost:hover{background:var(--c3);color:var(--txt)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.content{padding:24px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--c2);border:0.5px solid var(--c3);border-radius:var(--br2);padding:18px 20px}
+.stat-label{font-size:12px;color:var(--txt2);margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:700;line-height:1}
+.stat-sub{font-size:12px;color:var(--txt3);margin-top:6px}
+.stat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.dot-grn{background:var(--grn)}.dot-red{background:var(--red)}.dot-amb{background:var(--amb)}.dot-blue{background:var(--acc)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.card{background:var(--c2);border:0.5px solid var(--c3);border-radius:var(--br2);padding:20px}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.card-full{grid-column:1/-1}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--txt3);text-align:left;padding:8px 12px;border-bottom:0.5px solid var(--c3);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+td{padding:11px 12px;border-bottom:0.5px solid var(--c3);font-size:13px;color:var(--txt);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--c3)}
+.table-wrap{border-radius:var(--br2);overflow:hidden;background:var(--c2);border:0.5px solid var(--c3)}
+.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;display:inline-block;white-space:nowrap}
+.badge-grn{background:rgba(34,197,94,.15);color:#4ade80}
+.badge-red{background:rgba(239,68,68,.15);color:#f87171}
+.badge-amb{background:rgba(245,158,11,.15);color:#fbbf24}
+.badge-blue{background:rgba(79,142,247,.15);color:#93c5fd}
+.badge-gray{background:var(--c3);color:var(--txt2)}
+.badge-purple{background:rgba(124,92,252,.15);color:#a78bfa}
+.progress-bar{height:6px;background:var(--c3);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;background:var(--acc)}
+.progress-fill.grn{background:var(--grn)}.progress-fill.red{background:var(--red)}.progress-fill.amb{background:var(--amb)}
+.alert-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--c3)}
+.alert-item:last-child{border-bottom:none}
+.alert-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.alert-icon.red{background:rgba(239,68,68,.15);color:#f87171}
+.alert-icon.amb{background:rgba(245,158,11,.15);color:#fbbf24}
+.alert-icon.blue{background:rgba(79,142,247,.15);color:#93c5fd}
+.alert-title{font-size:13px;font-weight:500}
+.alert-sub{font-size:11px;color:var(--txt2);margin-top:2px}
+.alert-time{font-size:11px;color:var(--txt3);margin-left:auto;white-space:nowrap}
+.machine-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.mcard{background:var(--c2);border:0.5px solid var(--c3);border-radius:var(--br2);padding:16px;cursor:pointer;transition:all .15s}
+.mcard:hover{border-color:var(--acc);background:var(--c3)}
+.mcard-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.mcard-id{font-size:11px;color:var(--txt3);margin-bottom:2px}
+.mcard-name{font-size:14px;font-weight:600}
+.mcard-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.mcard-info{font-size:12px;color:var(--txt2);margin-top:2px}
+.mcard-footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:0.5px solid var(--c3)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+label{font-size:12px;color:var(--txt2)}
+input,select,textarea{background:var(--c3);border:0.5px solid var(--c4);border-radius:8px;padding:8px 12px;color:var(--txt);font-size:13px;width:100%;outline:none;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+textarea{resize:vertical;min-height:80px}
+select option{background:var(--c3)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--c2);border:0.5px solid var(--c4);border-radius:var(--br2);padding:24px;width:600px;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:0.5px solid var(--c3)}
+.timeline{display:flex;flex-direction:column}
+.tl-item{display:flex;gap:16px;padding-bottom:20px}
+.tl-item:last-child{padding-bottom:0}
+.tl-left{display:flex;flex-direction:column;align-items:center}
+.tl-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tl-dot.grn{background:rgba(34,197,94,.15);color:#4ade80}
+.tl-dot.red{background:rgba(239,68,68,.15);color:#f87171}
+.tl-dot.blue{background:rgba(79,142,247,.15);color:#93c5fd}
+.tl-line{flex:1;width:1px;background:var(--c3);margin-top:4px}
+.tl-content{flex:1;padding-bottom:4px}
+.tl-date{font-size:11px;color:var(--txt3);margin-bottom:3px}
+.tl-title{font-size:13px;font-weight:500}
+.tl-desc{font-size:12px;color:var(--txt2);margin-top:3px}
+.tab-bar{display:flex;gap:4px;border-bottom:0.5px solid var(--c3);margin-bottom:20px}
+.tab{padding:9px 16px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;color:var(--txt2);border-bottom:2px solid transparent;transition:all .15s}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc);background:rgba(79,142,247,.07)}
+.tab:hover:not(.active){color:var(--txt)}
+.hour-meter{background:var(--c3);border-radius:12px;padding:16px;text-align:center;min-width:130px}
+.hour-value{font-size:36px;font-weight:700;color:var(--acc);line-height:1}
+.hour-unit{font-size:13px;color:var(--txt3);margin-top:4px}
+.chart-bar-wrap{display:flex;flex-direction:column;gap:8px}
+.chart-row{display:flex;align-items:center;gap:10px}
+.chart-label{width:80px;font-size:11px;color:var(--txt2);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chart-track{flex:1;height:22px;background:var(--c3);border-radius:4px;overflow:hidden}
+.chart-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:11px;font-weight:500;color:#fff;transition:width .4s;min-width:0}
+.chart-val{width:36px;font-size:11px;color:var(--txt2);text-align:right;flex-shrink:0}
+.search-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-input{flex:1;min-width:180px;background:var(--c2);border:0.5px solid var(--c3);border-radius:8px;padding:8px 14px;color:var(--txt);font-size:13px;outline:none}
+.search-input:focus{border-color:var(--acc)}
+.hidden{display:none!important}
+.detail-header{background:var(--c2);border:0.5px solid var(--c3);border-radius:var(--br2);padding:20px;margin-bottom:16px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.detail-icon{width:56px;height:56px;border-radius:14px;background:rgba(79,142,247,.12);display:flex;align-items:center;justify-content:center;color:var(--acc);font-size:28px;flex-shrink:0}
+.detail-info{flex:1;min-width:200px}
+.detail-id{font-size:12px;color:var(--txt3);margin-bottom:3px}
+.detail-name{font-size:20px;font-weight:700;margin-bottom:6px}
+.detail-tags{display:flex;gap:8px;flex-wrap:wrap}
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.info-item{background:var(--c2);border:0.5px solid var(--c3);border-radius:var(--br);padding:12px}
+.info-item-label{font-size:11px;color:var(--txt3);margin-bottom:4px}
+.info-item-value{font-size:14px;font-weight:500}
+.pm-card{background:var(--c3);border-radius:var(--br);padding:14px;margin-bottom:10px}
+.pm-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+.pm-name{font-size:13px;font-weight:600;flex:1}
+.pm-freq{font-size:11px;color:var(--txt2);margin-bottom:4px}
+.pm-next{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2)}
+.snackbar{position:fixed;bottom:24px;right:24px;background:#22c55e;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;gap:8px}
+.snackbar.show{opacity:1}
+.icontrl{background:transparent;border:none;color:var(--txt3);cursor:pointer;padding:4px;border-radius:4px;display:inline-flex;align-items:center}
+.icontrl:hover{color:#f87171}
+@keyframes highlightRow{0%{background:rgba(79,142,247,.3)}100%{background:transparent}}
+.new-row td{animation:highlightRow 2s ease-out forwards}
+@keyframes highlightCard{0%{border-color:var(--acc);box-shadow:0 0 0 2px rgba(79,142,247,.3)}100%{border-color:var(--c3);box-shadow:none}}
+.new-card{animation:highlightCard 2s ease-out forwards}
+
+/* Gmail notify settings panel */
+.notify-panel{background:var(--c3);border-radius:var(--br);padding:16px;margin-top:16px}
+.notify-panel h4{font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.notify-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag-chip{background:var(--c2);border:0.5px solid var(--c4);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--txt2);display:flex;align-items:center;gap:5px}
+.tag-chip button{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0;line-height:1}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon"><i class="ti ti-settings-2"></i></div>
+      <div class="login-logo-title">MachineReg</div>
+      <div class="login-logo-sub">ระบบทะเบียนเครื่องจักร</div>
+    </div>
+    <div class="login-field">
+      <label>บทบาท</label>
+      <select id="login-role" onchange="updateLoginHint()">
+        <option value="engineer">วิศวกร (Engineer)</option>
+        <option value="technician">ช่าง (Technician)</option>
+      </select>
+    </div>
+    <div class="login-field">
+      <label>ชื่อผู้ใช้</label>
+      <input id="login-username" type="text" placeholder="กรอกชื่อผู้ใช้">
+    </div>
+    <div class="login-field">
+      <label>รหัสผ่าน</label>
+      <input id="login-password" type="password" placeholder="กรอกรหัสผ่าน" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()"><i class="ti ti-login"></i> เข้าสู่ระบบ</button>
+    <div class="login-error" id="login-error">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    <div class="login-role-hint" id="login-hint">
+      วิศวกร: เข้าถึงข้อมูลทั้งหมดและฟีเจอร์ครบ<br>
+      ช่าง: เข้าถึงข้อมูลซ่อมและประวัติเครื่องพื้นฐาน
+    </div>
+  </div>
+</div>
+
+<!-- ===== FIREBASE SETUP MODAL ===== -->
+<div class="modal-overlay" id="modal-firebase-setup">
+  <div class="firebase-setup">
+    <div class="modal-header">
+      <h3><i class="ti ti-database" style="color:var(--acc)"></i> ตั้งค่า Firebase (ซิงค์ข้อมูล)</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-firebase-setup')"><i class="ti ti-x"></i></button>
+    </div>
+    <p>กรอก Firebase Config เพื่อซิงค์ข้อมูลแบบ Real-time ระหว่างทุกเครื่อง ข้อมูลจะอัปเดตอัตโนมัติเมื่อใช้งานจากหลายเครื่องพร้อมกัน</p>
+    <div class="setup-step">
+      <strong>วิธีสร้าง Firebase:</strong><br>
+      1. ไปที่ <strong>console.firebase.google.com</strong> → สร้าง Project ใหม่<br>
+      2. เปิด <strong>Realtime Database</strong> → Create Database → ตั้ง Rules เป็น read/write: true<br>
+      3. ไปที่ Project Settings → เลือก Web app → Copy config มาวาง
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>apiKey</label><input id="fb-apikey" type="text" placeholder="AIzaSy..."></div>
+      <div class="form-group"><label>projectId</label><input id="fb-projectid" type="text" placeholder="my-project-id"></div>
+      <div class="form-group"><label>databaseURL</label><input id="fb-dburl" type="text" placeholder="https://my-project-default-rtdb.firebaseio.com"></div>
+    </div>
+    <div style="font-size:12px;color:var(--amb);margin-top:8px"><i class="ti ti-info-circle"></i> หากไม่ต้องการซิงค์ข้ามเครื่อง ข้ามการตั้งค่านี้ได้ ข้อมูลจะบันทึกใน browser นี้เครื่องเดียว</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-firebase-setup')">ข้าม</button>
+      <button class="btn btn-primary" onclick="saveFirebaseConfig()"><i class="ti ti-check"></i> บันทึกและเชื่อมต่อ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GMAIL NOTIFY SETTINGS MODAL ===== -->
+<div class="modal-overlay" id="modal-gmail-setup">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <h3><i class="ti ti-mail" style="color:var(--acc)"></i> ตั้งค่าแจ้งเตือน Gmail</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-gmail-setup')"><i class="ti ti-x"></i></button>
+    </div>
+    <p style="font-size:12px;color:var(--txt2);margin-bottom:16px;line-height:1.7">ระบบจะส่งอีเมลแจ้งเตือนเมื่อมีแผน PM ใกล้ถึงกำหนดหรือเกินกำหนด โดยใช้ <strong>EmailJS</strong> (ฟรี 200 อีเมล/เดือน)</p>
+    <div class="setup-step">
+      <strong>วิธีตั้งค่า EmailJS:</strong><br>
+      1. สมัคร <strong>emailjs.com</strong> → Add Email Service (Gmail)<br>
+      2. Create Email Template — ใส่ตัวแปร <strong>{"{{to_email}}"}</strong> <strong>{"{{subject}}"}</strong> <strong>{"{{message}}"}</strong><br>
+      3. คัดลอก Service ID, Template ID, Public Key มาวาง
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>EmailJS Service ID</label><input id="ejs-service" type="text" placeholder="service_xxxxxxx"></div>
+      <div class="form-group"><label>EmailJS Template ID</label><input id="ejs-template" type="text" placeholder="template_xxxxxxx"></div>
+      <div class="form-group full"><label>EmailJS Public Key</label><input id="ejs-pubkey" type="text" placeholder="xxxxxxxxxxxxxxxxxxxx"></div>
+    </div>
+    <div style="margin-top:16px">
+      <label style="font-size:12px;color:var(--txt2)">อีเมลช่าง (รับแจ้งเตือน) — กด Enter หรือ , เพื่อเพิ่ม</label>
+      <input id="gmail-input" type="email" placeholder="technician@gmail.com" style="margin-top:5px" onkeydown="addGmailTag(event)">
+      <div class="notify-tags" id="gmail-tags"></div>
+    </div>
+    <div style="margin-top:12px">
+      <label style="font-size:12px;color:var(--txt2)">แจ้งเตือนล่วงหน้า (วัน)</label>
+      <select id="notify-days" style="margin-top:5px">
+        <option value="3">3 วัน</option>
+        <option value="7" selected>7 วัน</option>
+        <option value="14">14 วัน</option>
+        <option value="30">30 วัน</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="testGmailNotify()"><i class="ti ti-send"></i> ทดสอบส่ง</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-gmail-setup')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveGmailConfig()"><i class="ti ti-check"></i> บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-title"><i class="ti ti-settings-2" style="color:var(--acc)"></i> MachineReg</div>
+    <div class="logo-sub">ระบบทะเบียนเครื่องจักร</div>
+  </div>
+  <nav class="nav" id="sidebar-nav">
+    <div class="nav-section">หลัก</div>
+    <div class="nav-item" id="nav-dashboard" onclick="showPage('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+    <div class="nav-item" id="nav-machines" onclick="showPage('machines')"><i class="ti ti-engine"></i> ทะเบียนเครื่องจักร</div>
+    <div class="nav-section">บำรุงรักษา</div>
+    <div class="nav-item" id="nav-maintenance" onclick="showPage('maintenance')"><i class="ti ti-tool"></i> ประวัติซ่อมบำรุง</div>
+    <div class="nav-item" id="nav-plan" onclick="showPage('plan')"><i class="ti ti-calendar-check"></i> แผน PM</div>
+    <div class="nav-item" id="nav-hours" onclick="showPage('hours')"><i class="ti ti-clock"></i> บันทึกชั่วโมง</div>
+    <div class="nav-section" id="nav-section-report">รายงาน</div>
+    <div class="nav-item" id="nav-alerts" onclick="showPage('alerts')">
+      <i class="ti ti-bell" style="color:var(--amb)"></i> แจ้งเตือน
+      <span id="alert-badge" style="display:none;background:var(--red);color:#fff;border-radius:20px;font-size:10px;padding:1px 6px;margin-left:auto">0</span>
+    </div>
+    <div class="nav-item" id="nav-report" onclick="showPage('report')"><i class="ti ti-chart-bar"></i> รายงาน</div>
+  </nav>
+  <div style="padding:14px;border-top:0.5px solid var(--c3)">
+    <!-- Sync status -->
+    <div class="sync-indicator" id="sync-status" style="margin-bottom:10px;padding:6px 8px;background:var(--c3);border-radius:6px">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text">ออฟไลน์</span>
+      <button onclick="openModal('modal-firebase-setup')" style="margin-left:auto;background:none;border:none;color:var(--txt3);cursor:pointer;font-size:11px;padding:0"><i class="ti ti-settings"></i></button>
+    </div>
+    <!-- User info -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div id="user-avatar" style="width:32px;height:32px;border-radius:50%;background:var(--acc2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">?</div>
+      <div>
+        <div id="user-name" style="font-size:13px;font-weight:500">—</div>
+        <div id="user-role-label" style="font-size:11px;color:var(--txt3)">—</div>
+      </div>
+      <button onclick="doLogout()" title="ออกจากระบบ" style="margin-left:auto;background:none;border:none;color:var(--txt3);cursor:pointer;font-size:16px"><i class="ti ti-logout"></i></button>
+    </div>
+    <!-- Engineer-only buttons -->
+    <div id="engineer-controls">
+      <button onclick="openModal('modal-gmail-setup')" style="width:100%;background:transparent;border:0.5px solid var(--acc);border-radius:6px;color:var(--acc);font-size:11px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px">
+        <i class="ti ti-mail"></i> ตั้งค่า Gmail แจ้งเตือน
+      </button>
+      <button onclick="exportHTML()" style="width:100%;background:var(--acc);border:none;border-radius:6px;color:#fff;font-size:11px;padding:6px 8px;cursor:pointer;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-download"></i> Export ไฟล์
+      </button>
+      <label style="width:100%;background:transparent;border:0.5px solid var(--acc);border-radius:6px;color:var(--acc);font-size:11px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px">
+        <i class="ti ti-upload"></i> Import ไฟล์
+        <input type="file" accept=".html" style="display:none" onchange="importHTML(event)">
+      </label>
+      <button onclick="resetAllData()" style="width:100%;background:transparent;border:0.5px solid var(--c4);border-radius:6px;color:var(--txt3);font-size:11px;padding:5px 8px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">
+        <i class="ti ti-trash"></i> รีเซ็ตข้อมูล
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="hidden">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-layout-dashboard" style="color:var(--acc)"></i> Dashboard ภาพรวม</div>
+    <span style="font-size:12px;color:var(--txt3)" id="dash-update-time">—</span>
+  </div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label"><i class="ti ti-engine"></i> เครื่องจักรทั้งหมด</div><div class="stat-value" id="dash-total-machines">0</div><div class="stat-sub" id="dash-machine-status">—</div></div>
+      <div class="stat-card"><div class="stat-label"><i class="ti ti-calendar-check"></i> แผน PM ทั้งหมด</div><div class="stat-value" style="color:var(--amb)" id="dash-pm-total">0</div><div class="stat-sub" id="dash-pm-overdue-sub">—</div></div>
+      <div class="stat-card"><div class="stat-label"><i class="ti ti-tool"></i> ซ่อมบำรุงทั้งหมด</div><div class="stat-value" id="dash-maint-count">0</div><div class="stat-sub" id="dash-maint-sub">—</div></div>
+      <div class="stat-card"><div class="stat-label"><i class="ti ti-clock"></i> ชั่วโมงรวมทั้งหมด</div><div class="stat-value" id="dash-total-hours">0</div><div class="stat-sub">ชั่วโมงสะสมทุกเครื่อง</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="ti ti-bell" style="color:var(--amb)"></i> แจ้งเตือนด่วน</h3>
+          <span class="badge badge-red" id="dash-alert-badge" style="display:none">0</span>
+        </div>
+        <div id="dash-alerts-list"><div style="color:var(--txt3);font-size:13px;text-align:center;padding:12px 0">ไม่มีการแจ้งเตือน ✓</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3><i class="ti ti-chart-pie" style="color:var(--acc)"></i> สถานะเครื่องจักร</h3></div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px">ใช้งานปกติ</span><span style="font-size:13px;font-weight:600;color:var(--grn)" id="dash-active-count">0 / 0</span></div><div class="progress-bar"><div class="progress-fill grn" id="dash-active-bar" style="width:0%"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px">กำลังซ่อม</span><span style="font-size:13px;font-weight:600;color:var(--red)" id="dash-repair-count">0 / 0</span></div><div class="progress-bar"><div class="progress-fill red" id="dash-repair-bar" style="width:0%"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:13px">หยุดใช้งาน</span><span style="font-size:13px;font-weight:600;color:var(--txt2)" id="dash-idle-count">0 / 0</span></div><div class="progress-bar"><div class="progress-fill" id="dash-idle-bar" style="width:0%;background:var(--txt3)"></div></div></div>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:0.5px solid var(--c3)">
+          <div style="font-size:12px;color:var(--txt3);margin-bottom:8px">PM / CM</div>
+          <div class="chart-bar-wrap">
+            <div class="chart-row"><div class="chart-label">PM</div><div class="chart-track"><div class="chart-fill" id="dash-pm-bar" style="width:0%;background:var(--acc)">0</div></div><div class="chart-val" id="dash-pm-val">0</div></div>
+            <div class="chart-row"><div class="chart-label">CM</div><div class="chart-track"><div class="chart-fill" id="dash-cm-bar" style="width:0%;background:var(--red)">0</div></div><div class="chart-val" id="dash-cm-val">0</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card card-full">
+        <div class="card-header"><h3><i class="ti ti-calendar" style="color:var(--acc)"></i> แผน PM ล่าสุด</h3><button class="btn btn-ghost btn-sm" onclick="showPage('plan')">ดูทั้งหมด →</button></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>เครื่องจักร</th><th>แผน PM</th><th>กำหนดวัน</th><th>ช่าง</th><th>สถานะ</th></tr></thead>
+          <tbody id="dash-pm-table-body"><tr><td colspan="5" style="text-align:center;color:var(--txt3);padding:20px">ยังไม่มีแผน PM</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3><i class="ti ti-clock" style="color:var(--acc)"></i> ชั่วโมงเดินล่าสุด (10 รายการ)</h3><button class="btn btn-ghost btn-sm" onclick="showPage('hours')">ดูทั้งหมด →</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>วันที่</th><th>เครื่องจักร</th><th>ชั่วโมงวันนี้</th><th>ชั่วโมงสะสม</th><th>ผู้บันทึก</th></tr></thead>
+        <tbody id="dash-hours-tbody"><tr><td colspan="5" style="text-align:center;color:var(--txt3);padding:16px">ยังไม่มีข้อมูล</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- MACHINES -->
+<div id="page-machines" class="hidden">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-engine" style="color:var(--acc)"></i> ทะเบียนเครื่องจักร</div>
+    <button class="btn btn-primary" id="btn-add-machine" onclick="openAddMachineModal()"><i class="ti ti-plus"></i> เพิ่มเครื่องจักร</button>
+  </div>
+  <div class="content">
+    <div class="search-bar">
+      <input class="search-input" type="text" placeholder="🔍 ค้นหา รหัส ชื่อ ยี่ห้อ ชั่วโมง..." oninput="filterMachines(this.value)" id="machine-search">
+      <select id="filter-status" onchange="filterMachines(document.getElementById('machine-search').value)" style="background:var(--c2);border:0.5px solid var(--c3);color:var(--txt);padding:8px 12px;border-radius:8px;font-size:13px">
+        <option value="">ทุกสถานะ</option><option value="ใช้งาน">ใช้งาน</option><option value="ซ่อมบำรุง">ซ่อมบำรุง</option><option value="หยุดใช้งาน">หยุดใช้งาน</option>
+      </select>
+      <select id="filter-dept" onchange="filterMachines(document.getElementById('machine-search').value)" style="background:var(--c2);border:0.5px solid var(--c3);color:var(--txt);padding:8px 12px;border-radius:8px;font-size:13px">
+        <option value="">ทุกแผนก</option><option value="ฝ่ายผลิต">ฝ่ายผลิต</option><option value="ฝ่ายซ่อมบำรุง">ฝ่ายซ่อมบำรุง</option><option value="ฝ่ายตรวจสอบ">ฝ่ายตรวจสอบ</option>
+      </select>
+    </div>
+    <div class="machine-grid" id="machine-grid"></div>
+  </div>
+</div>
+
+<!-- MACHINE DETAIL -->
+<div id="page-detail" class="hidden">
+  <div class="topbar">
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="showPage('machines')"><i class="ti ti-arrow-left"></i> กลับ</button>
+      <div class="page-title" style="margin-left:8px" id="detail-title">—</div>
+    </div>
+    <div class="topbar-actions" id="detail-actions">
+      <button class="btn btn-ghost btn-sm" id="btn-edit-machine" onclick="openEditMachineModal()"><i class="ti ti-edit"></i> แก้ไข</button>
+      <button class="btn btn-primary btn-sm" onclick="openMaintFromDetail()"><i class="ti ti-plus"></i> บันทึกซ่อม</button>
+      <button class="btn btn-danger btn-sm" id="btn-delete-machine" onclick="deleteMachineFromDetail()"><i class="ti ti-trash"></i> ลบเครื่อง</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="detail-header">
+      <div class="detail-icon"><i class="ti ti-settings-2"></i></div>
+      <div class="detail-info">
+        <div class="detail-id" id="detail-id">—</div>
+        <div class="detail-name" id="detail-name">—</div>
+        <div class="detail-tags" id="detail-tags"></div>
+      </div>
+      <div class="hour-meter"><div class="hour-value" id="detail-hours">0</div><div class="hour-unit">ชั่วโมงเดิน</div></div>
+    </div>
+    <div class="info-grid">
+      <div class="info-item"><div class="info-item-label">ยี่ห้อ / รุ่น</div><div class="info-item-value" id="detail-brand">—</div></div>
+      <div class="info-item"><div class="info-item-label">ปีที่ซื้อ</div><div class="info-item-value" id="detail-year">—</div></div>
+      <div class="info-item" id="detail-value-box"><div class="info-item-label">มูลค่า</div><div class="info-item-value" id="detail-value">—</div></div>
+      <div class="info-item"><div class="info-item-label">แผนก</div><div class="info-item-value" id="detail-dept">—</div></div>
+      <div class="info-item"><div class="info-item-label">ที่ตั้ง</div><div class="info-item-value" id="detail-location">—</div></div>
+      <div class="info-item"><div class="info-item-label">ช่างรับผิดชอบ</div><div class="info-item-value" id="detail-tech">—</div></div>
+    </div>
+    <div class="tab-bar" id="detail-tab-bar">
+      <div class="tab active" onclick="switchDetailTab(this,'tab-history')">ประวัติซ่อมบำรุง</div>
+      <div class="tab" onclick="switchDetailTab(this,'tab-pm')">แผน PM</div>
+      <div class="tab" id="tab-hours-btn" onclick="switchDetailTab(this,'tab-hours')">บันทึกชั่วโมง</div>
+    </div>
+    <div id="tab-history">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-primary btn-sm" onclick="openMaintFromDetail()"><i class="ti ti-plus"></i> เพิ่มประวัติซ่อม</button>
+      </div>
+      <div class="timeline" id="detail-timeline"></div>
+    </div>
+    <div id="tab-pm" class="hidden">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px" id="tab-pm-add-btn">
+        <button class="btn btn-primary btn-sm" onclick="openPmModalForMachine()"><i class="ti ti-plus"></i> เพิ่มแผน PM</button>
+      </div>
+      <div id="detail-pm-list"></div>
+    </div>
+    <div id="tab-hours" class="hidden">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px" id="tab-hours-add-btn">
+        <button class="btn btn-primary btn-sm" onclick="openHoursFromDetail()"><i class="ti ti-plus"></i> บันทึกชั่วโมง</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>วันที่</th><th>ชั่วโมงเดิน</th><th>ชั่วโมงสะสม</th><th>ผู้บันทึก</th><th>หมายเหตุ</th><th></th></tr></thead>
+        <tbody id="detail-hours-table"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAINTENANCE -->
+<div id="page-maintenance" class="hidden">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-tool" style="color:var(--acc)"></i> ประวัติการซ่อมบำรุง</div>
+    <button class="btn btn-primary" onclick="openModal('modal-maint')"><i class="ti ti-plus"></i> บันทึกใหม่</button>
+  </div>
+  <div class="content">
+    <div class="search-bar">
+      <input class="search-input" type="text" placeholder="🔍 ค้นหา..." oninput="filterMaintenance(this.value)" id="maint-search">
+      <select id="filter-maint-type" onchange="filterMaintenance(document.getElementById('maint-search').value)" style="background:var(--c2);border:0.5px solid var(--c3);color:var(--txt);padding:8px 12px;border-radius:8px;font-size:13px">
+        <option value="">PM + CM</option><option value="PM">PM</option><option value="CM">CM</option>
+      </select>
+    </div>
+    <div id="maint-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--txt3)">
+      <i class="ti ti-tool" style="font-size:48px;display:block;margin-bottom:12px"></i>
+      <div style="font-size:15px">ยังไม่มีประวัติซ่อมบำรุง</div>
+    </div>
+    <div class="table-wrap" id="maint-table-wrap"><table>
+      <thead><tr><th>วันที่</th><th>รหัสเครื่อง</th><th>ชื่อเครื่อง</th><th>ประเภท</th><th>รายละเอียด</th><th>ช่าง</th><th>ค่าใช้จ่าย</th><th>สถานะ</th><th></th></tr></thead>
+      <tbody id="maint-table-body"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- PLAN PM -->
+<div id="page-plan" class="hidden">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-calendar-check" style="color:var(--acc)"></i> แผนการบำรุงรักษา (PM Plan)</div>
+    <button class="btn btn-primary" id="btn-add-pm" onclick="openPmModal()"><i class="ti ti-plus"></i> เพิ่มแผน PM</button>
+  </div>
+  <div class="content">
+    <div id="plan-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--txt3)">
+      <i class="ti ti-calendar-off" style="font-size:48px;display:block;margin-bottom:12px"></i>
+      <div style="font-size:15px;margin-bottom:6px">ยังไม่มีแผน PM</div>
+    </div>
+    <div class="table-wrap" id="plan-table-wrap"><table>
+      <thead><tr><th>เครื่องจักร</th><th>แผน PM</th><th>กำหนดวัน / ชั่วโมง</th><th>ทริกเกอร์</th><th>ช่าง</th><th>สถานะ</th><th>การดำเนินการ</th></tr></thead>
+      <tbody id="plan-table-body"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- HOURS -->
+<div id="page-hours" class="hidden">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-clock" style="color:var(--acc)"></i> บันทึกการใช้งาน / ชั่วโมงเดิน</div>
+    <button class="btn btn-primary" id="btn-add-hours" onclick="openHoursModal()"><i class="ti ti-plus"></i> บันทึกชั่วโมง</button>
+  </div>
+  <div class="content">
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-label">ชั่วโมงรวมทั้งหมด</div><div class="stat-value" style="color:var(--acc)" id="hours-total-all">0</div><div class="stat-sub">สะสมทุกเครื่อง</div></div>
+      <div class="stat-card"><div class="stat-label">เครื่องที่วิ่งมากสุด</div><div class="stat-value" style="font-size:18px" id="hours-top-machine">—</div><div class="stat-sub" id="hours-top-sub">—</div></div>
+      <div class="stat-card"><div class="stat-label">จำนวนรายการบันทึก</div><div class="stat-value" id="hours-record-count">0</div><div class="stat-sub">รายการทั้งหมด</div></div>
+    </div>
+    <div class="search-bar"><input class="search-input" type="text" placeholder="🔍 ค้นหา รหัส ชื่อ ผู้บันทึก..." oninput="filterHours(this.value)" id="hours-search"></div>
+    <div id="hours-empty" style="display:none;text-align:center;padding:60px 20px;color:var(--txt3)">
+      <i class="ti ti-clock-off" style="font-size:48px;display:block;margin-bottom:12px"></i>
+      <div style="font-size:15px">ยังไม่มีบันทึกชั่วโมง</div>
+    </div>
+    <div class="table-wrap" id="hours-table-wrap"><table>
+      <thead><tr><th>วันที่</th><th>รหัสเครื่อง</th><th>ชื่อเครื่องจักร</th><th>ชั่วโมงวันนี้</th><th>ชั่วโมงสะสม</th><th>ผู้บันทึก</th><th>หมายเหตุ</th><th></th></tr></thead>
+      <tbody id="hours-table-body"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ALERTS -->
+<div id="page-alerts" class="hidden">
+  <div class="topbar">
+    <div class="page-title"><i class="ti ti-bell" style="color:var(--amb)"></i> ศูนย์แจ้งเตือน</div>
+    <button class="btn btn-ghost btn-sm" id="btn-send-notify" onclick="sendAllAlertEmails()"><i class="ti ti-mail"></i> ส่งแจ้งเตือน Gmail</button>
+  </div>
+  <div class="content" id="alerts-page-list">
+    <div style="text-align:center;padding:60px 20px;color:var(--txt3)">
+      <i class="ti ti-bell-off" style="font-size:48px;display:block;margin-bottom:12px"></i>
+      <div>ไม่มีการแจ้งเตือน</div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT -->
+<div id="page-report" class="hidden">
+  <div class="topbar"><div class="page-title"><i class="ti ti-chart-bar" style="color:var(--acc)"></i> รายงานสรุป</div></div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">ค่าใช้จ่าย PM รวม</div><div class="stat-value" id="report-pm-cost">0</div><div class="stat-sub">บาท</div></div>
+      <div class="stat-card"><div class="stat-label">ค่าใช้จ่าย CM รวม</div><div class="stat-value" style="color:var(--red)" id="report-cm-cost">0</div><div class="stat-sub">บาท</div></div>
+      <div class="stat-card"><div class="stat-label">อัตราพร้อมใช้งาน</div><div class="stat-value" style="color:var(--grn)" id="report-avail">—</div><div class="stat-sub">Machine Availability</div></div>
+      <div class="stat-card"><div class="stat-label">เครื่องจักรทั้งหมด</div><div class="stat-value" id="report-total-machines">0</div><div class="stat-sub">เครื่อง</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="card-header"><h3>ค่าใช้จ่ายต่อเครื่อง (สูงสุด 8)</h3></div><div class="chart-bar-wrap" id="report-cost-chart"><div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">ยังไม่มีข้อมูล</div></div></div>
+      <div class="card"><div class="card-header"><h3>เครื่องที่ซ่อมบ่อยสุด (สูงสุด 8)</h3></div><div class="chart-bar-wrap" id="report-freq-chart"><div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">ยังไม่มีข้อมูล</div></div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main -->
+</div><!-- end app -->
+
+<!-- ADD MACHINE MODAL -->
+<div class="modal-overlay" id="modal-add" onclick="closeOnBg(event,'modal-add')">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="ti ti-engine" style="color:var(--acc)"></i> เพิ่มเครื่องจักรใหม่</h3><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-add')"><i class="ti ti-x"></i></button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>รหัสเครื่องจักร *</label><input id="add-code" type="text" placeholder="เช่น CNC-005"></div>
+      <div class="form-group"><label>ชื่อเครื่องจักร *</label><input id="add-name" type="text"></div>
+      <div class="form-group"><label>ยี่ห้อ</label><input id="add-brand" type="text"></div>
+      <div class="form-group"><label>รุ่น</label><input id="add-model" type="text"></div>
+      <div class="form-group"><label>ปีที่ซื้อ</label><input id="add-year" type="number" placeholder="2568"></div>
+      <div class="form-group"><label>มูลค่า (บาท)</label><input id="add-value" type="number" placeholder="0"></div>
+      <div class="form-group"><label>แผนก</label><select id="add-dept"><option>ฝ่ายผลิต</option><option>ฝ่ายซ่อมบำรุง</option><option>ฝ่ายตรวจสอบ</option></select></div>
+      <div class="form-group"><label>สถานะ</label><select id="add-status"><option>ใช้งาน</option><option>ซ่อมบำรุง</option><option>หยุดใช้งาน</option></select></div>
+      <div class="form-group"><label>ที่ตั้ง</label><input id="add-location" type="text" placeholder="อาคาร / โซน"></div>
+      <div class="form-group"><label>ช่างรับผิดชอบ</label><input id="add-tech" type="text"></div>
+      <div class="form-group full"><label>หมายเหตุ</label><textarea id="add-note" placeholder="ข้อมูลเพิ่มเติม..."></textarea></div>
+    </div>
+    <div style="font-size:12px;color:var(--red);margin-top:8px;display:none" id="add-error">⚠ กรุณากรอกรหัสและชื่อเครื่องจักร</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveMachine()"><i class="ti ti-check"></i> บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MACHINE MODAL -->
+<div class="modal-overlay" id="modal-edit" onclick="closeOnBg(event,'modal-edit')">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="ti ti-edit" style="color:var(--acc)"></i> แก้ไขข้อมูลเครื่องจักร</h3><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-edit')"><i class="ti ti-x"></i></button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>รหัสเครื่องจักร</label><input id="edit-code" type="text" disabled style="opacity:.5;cursor:not-allowed"></div>
+      <div class="form-group"><label>ชื่อเครื่องจักร *</label><input id="edit-name" type="text"></div>
+      <div class="form-group"><label>ยี่ห้อ</label><input id="edit-brand" type="text"></div>
+      <div class="form-group"><label>รุ่น</label><input id="edit-model" type="text"></div>
+      <div class="form-group"><label>ปีที่ซื้อ</label><input id="edit-year" type="number"></div>
+      <div class="form-group"><label>มูลค่า (บาท)</label><input id="edit-value" type="number"></div>
+      <div class="form-group"><label>แผนก</label><select id="edit-dept"><option>ฝ่ายผลิต</option><option>ฝ่ายซ่อมบำรุง</option><option>ฝ่ายตรวจสอบ</option></select></div>
+      <div class="form-group"><label>สถานะ</label><select id="edit-status"><option>ใช้งาน</option><option>ซ่อมบำรุง</option><option>หยุดใช้งาน</option></select></div>
+      <div class="form-group"><label>ที่ตั้ง</label><input id="edit-location" type="text"></div>
+      <div class="form-group"><label>ช่างรับผิดชอบ</label><input id="edit-tech" type="text"></div>
+      <div class="form-group full"><label>หมายเหตุ</label><textarea id="edit-note"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveEditMachine()"><i class="ti ti-check"></i> บันทึกการแก้ไข</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAINTENANCE MODAL -->
+<div class="modal-overlay" id="modal-maint" onclick="closeOnBg(event,'modal-maint')">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="ti ti-tool" style="color:var(--acc)"></i> บันทึกการซ่อมบำรุง</h3><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-maint')"><i class="ti ti-x"></i></button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>เครื่องจักร *</label><select id="maint-machine"></select></div>
+      <div class="form-group"><label>ประเภท *</label><select id="maint-type"><option value="PM">PM — ป้องกัน</option><option value="CM">CM — แก้ไข</option></select></div>
+      <div class="form-group"><label>วันที่ดำเนินการ *</label><input id="maint-date" type="date"></div>
+      <div class="form-group"><label>ชั่วโมงเดิน ณ เวลาซ่อม</label><input id="maint-hours" type="number" placeholder="0"></div>
+      <div class="form-group"><label>ช่างผู้ดำเนินการ</label><input id="maint-tech" type="text"></div>
+      <div class="form-group"><label>ระยะเวลา (ชั่วโมง)</label><input id="maint-duration" type="number" placeholder="0"></div>
+      <div class="form-group"><label>ค่าใช้จ่าย (บาท)</label><input id="maint-cost" type="number" placeholder="0"></div>
+      <div class="form-group"><label>สถานะ</label><select id="maint-status"><option value="เสร็จแล้ว">เสร็จแล้ว</option><option value="กำลังดำเนินการ">กำลังดำเนินการ</option><option value="รอดำเนินการ">รอดำเนินการ</option></select></div>
+      <div class="form-group full"><label>รายละเอียดงาน *</label><textarea id="maint-detail" placeholder="อธิบายงานซ่อม อะไหล่ที่เปลี่ยน..."></textarea></div>
+    </div>
+    <div style="font-size:12px;color:var(--red);margin-top:8px;display:none" id="maint-error">⚠ กรุณากรอกข้อมูลที่จำเป็น</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-maint')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveMaintenance()"><i class="ti ti-check"></i> บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOURS MODAL -->
+<div class="modal-overlay" id="modal-hours" onclick="closeOnBg(event,'modal-hours')">
+  <div class="modal" style="width:460px">
+    <div class="modal-header"><h3><i class="ti ti-clock" style="color:var(--acc)"></i> <span id="hours-modal-title">บันทึกชั่วโมงเดิน</span></h3><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-hours')"><i class="ti ti-x"></i></button></div>
+    <input type="hidden" id="hours-edit-idx" value="">
+    <div class="form-grid">
+      <div class="form-group full"><label>เครื่องจักร *</label><select id="hours-machine"></select></div>
+      <div class="form-group"><label>วันที่ *</label><input id="hours-date" type="date"></div>
+      <div class="form-group"><label>ชั่วโมงเดินปัจจุบัน *</label><input id="hours-current" type="number" placeholder="เช่น 1250.5" step="0.5" min="0"></div>
+      <div class="form-group"><label>ชั่วโมงเดิน (วันนี้)</label><input id="hours-run" type="number" placeholder="0.0" step="0.5" min="0"></div>
+      <div class="form-group full"><label>ผู้บันทึก</label><input id="hours-recorder" type="text"></div>
+      <div class="form-group full"><label>หมายเหตุ</label><textarea id="hours-note" placeholder="หมายเหตุ..." style="min-height:60px"></textarea></div>
+    </div>
+    <div style="font-size:12px;color:var(--red);margin-top:8px;display:none" id="hours-error">⚠ กรุณากรอกข้อมูลที่จำเป็น</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-hours')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveHours()"><i class="ti ti-check"></i> บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- PM PLAN MODAL -->
+<div class="modal-overlay" id="modal-pm" onclick="closeOnBg(event,'modal-pm')">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <h3 id="pm-modal-title"><i class="ti ti-calendar-plus" style="color:var(--acc)"></i> เพิ่มแผน PM</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-pm')"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="pm-edit-idx" value="">
+    <div class="form-grid">
+      <div class="form-group"><label>เครื่องจักร *</label><select id="pm-machine"></select></div>
+      <div class="form-group"><label>ชื่อแผน PM *</label><input id="pm-name" type="text" placeholder="เช่น PM 500 ชม."></div>
+      <div class="form-group"><label>ทริกเกอร์</label>
+        <select id="pm-trigger">
+          <option value="ชั่วโมงเดิน">ชั่วโมงเดิน</option>
+          <option value="รายวัน">รายวัน</option><option value="รายสัปดาห์">รายสัปดาห์</option>
+          <option value="รายเดือน">รายเดือน</option><option value="ราย 3 เดือน">ราย 3 เดือน</option>
+          <option value="ราย 6 เดือน">ราย 6 เดือน</option><option value="รายปี">รายปี</option>
+        </select>
+      </div>
+      <div class="form-group"><label>ทุกกี่ชั่วโมง (ถ้าทริกเกอร์ชั่วโมง)</label><input id="pm-interval-hours" type="number" placeholder="เช่น 500" min="1"></div>
+      <div class="form-group"><label>กำหนดวันถัดไป</label><input id="pm-due-date" type="date"></div>
+      <div class="form-group"><label>ช่างรับผิดชอบ</label><input id="pm-tech" type="text"></div>
+      <div class="form-group"><label>สถานะ</label>
+        <select id="pm-status">
+          <option value="รอดำเนินการ">รอดำเนินการ</option>
+          <option value="นัดหมายแล้ว">นัดหมายแล้ว</option>
+          <option value="เกินกำหนด">เกินกำหนด</option>
+          <option value="เสร็จแล้ว">เสร็จแล้ว</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>รายละเอียดงาน</label><textarea id="pm-detail" placeholder="อธิบายงานที่ต้องทำ..." style="min-height:70px"></textarea></div>
+    </div>
+    <div style="font-size:12px;color:var(--red);margin-top:8px;display:none" id="pm-error">⚠ กรุณากรอกข้อมูลที่จำเป็น (เครื่องจักร + ชื่อแผน)</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pm')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="savePmPlan()"><i class="ti ti-check"></i> บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="snackbar" id="snackbar"><i class="ti ti-check"></i><span id="snack-msg">บันทึกสำเร็จ</span></div>
+
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+<script>
+// ===========================
+// USERS / AUTH
+// ===========================
+const USERS = {
+  // engineer accounts: full access
+  engineer: [
+    { username: 'admin',    password: 'admin1234',  name: 'ผู้ดูแลระบบ',  avatar: 'ผด' },
+    { username: 'engineer1',password: 'eng1234',    name: 'วิศวกร สมชาย', avatar: 'วศ' },
+  ],
+  // technician accounts: limited access
+  technician: [
+    { username: 'tech1',    password: 'tech1234',   name: 'ช่าง สมหมาย', avatar: 'ชม', email: 'tech1@gmail.com' },
+    { username: 'tech2',    password: 'tech5678',   name: 'ช่าง สมศรี',  avatar: 'ชศ', email: 'tech2@gmail.com' },
+  ]
+};
+
+let CURRENT_USER = null; // { username, name, avatar, role, email? }
+
+function updateLoginHint() {
+  const role = document.getElementById('login-role').value;
+  // hint already static, could update dynamically
+}
+
+function doLogin() {
+  const role = document.getElementById('login-role').value;
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+
+  const list = USERS[role] || [];
+  const found = list.find(u => u.username === username && u.password === password);
+  if (!found) { errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+
+  CURRENT_USER = { ...found, role };
+  sessionStorage.setItem('machineReg_session', JSON.stringify(CURRENT_USER));
+
+  document.getElementById('login-screen').classList.add('hidden');
+  applyRoleUI();
+  initApp();
+}
+
+function doLogout() {
+  if (!confirm('ออกจากระบบ?')) return;
+  CURRENT_USER = null;
+  sessionStorage.removeItem('machineReg_session');
+  location.reload();
+}
+
+function applyRoleUI() {
+  const isEngineer = CURRENT_USER.role === 'engineer';
+
+  // Update user info in sidebar
+  document.getElementById('user-avatar').textContent = CURRENT_USER.avatar || '?';
+  document.getElementById('user-name').textContent = CURRENT_USER.name;
+  document.getElementById('user-role-label').textContent = isEngineer ? 'วิศวกร' : 'ช่าง';
+
+  // Engineer-only sidebar controls
+  document.getElementById('engineer-controls').style.display = isEngineer ? '' : 'none';
+
+  // Restrict nav items for technician
+  if (!isEngineer) {
+    ['nav-dashboard','nav-report'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('disabled');
+    });
+    // Hide add machine button
+    const btnAdd = document.getElementById('btn-add-machine');
+    if (btnAdd) btnAdd.style.display = 'none';
+    // Detail page: hide edit/delete buttons
+    document.getElementById('btn-edit-machine').style.display = 'none';
+    document.getElementById('btn-delete-machine').style.display = 'none';
+    // hide value row for technician
+    const vb = document.getElementById('detail-value-box');
+    if (vb) vb.style.display = 'none';
+    // PM add: hide engineer only add button
+    document.getElementById('btn-add-pm').style.display = 'none';
+    document.getElementById('tab-pm-add-btn').style.display = 'none';
+    document.getElementById('tab-hours-add-btn').style.display = 'none';
+    document.getElementById('btn-add-hours').style.display = 'none';
+    document.getElementById('btn-send-notify').style.display = 'none';
+  }
+}
+
+// ===========================
+// STORAGE
+// ===========================
+const STORAGE_KEY = 'machineReg_v1';
+const FB_CONFIG_KEY = 'machineReg_firebase';
+const GMAIL_CONFIG_KEY = 'machineReg_gmail';
+const DEFAULT_DATA = { machines:[], maintenance:[], hours:[], pmPlans:[] };
+
+function loadDB() {
+  try { const s = localStorage.getItem(STORAGE_KEY); if(s) return JSON.parse(s); } catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+function saveDB() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){ console.warn(e); }
+  syncToFirebase();
+}
+
+let DB = loadDB();
+if(!DB.pmPlans) { DB.pmPlans=[]; }
+
+// ===========================
+// FIREBASE SYNC
+// ===========================
+let fbDatabase = null;
+let fbRef = null;
+
+function loadFirebaseConfig() {
+  try { return JSON.parse(localStorage.getItem(FB_CONFIG_KEY) || 'null'); } catch(e){ return null; }
+}
+function saveFirebaseConfig() {
+  const cfg = {
+    apiKey: document.getElementById('fb-apikey').value.trim(),
+    projectId: document.getElementById('fb-projectid').value.trim(),
+    databaseURL: document.getElementById('fb-dburl').value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.projectId || !cfg.databaseURL) { showSnack('⚠ กรุณากรอกข้อมูลให้ครบ','#ef4444'); return; }
+  localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
+  closeModal('modal-firebase-setup');
+  showSnack('✅ บันทึก Firebase config แล้ว — กำลังเชื่อมต่อ...');
+  initFirebase(cfg);
+}
+
+async function initFirebase(cfg) {
+  setSyncStatus('syncing', 'กำลังเชื่อมต่อ...');
+  try {
+    // Dynamically load Firebase SDKs
+    if (!window.firebase) {
+      await loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js');
+    }
+    const app = firebase.initializeApp(cfg, 'machineRegApp');
+    fbDatabase = firebase.database(app);
+    fbRef = fbDatabase.ref('machineReg/data');
+
+    // Listen for remote changes
+    fbRef.on('value', (snap) => {
+      const remoteData = snap.val();
+      if (remoteData) {
+        DB = remoteData;
+        if(!DB.pmPlans) DB.pmPlans=[];
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e){}
+        renderAll();
+      }
+      setSyncStatus('connected', 'ซิงค์แล้ว');
+    }, (err) => {
+      setSyncStatus('error', 'เชื่อมต่อไม่ได้');
+    });
+  } catch(err) {
+    setSyncStatus('error', 'ผิดพลาด: ' + err.message);
+  }
+}
+
+function syncToFirebase() {
+  if (!fbRef) return;
+  setSyncStatus('syncing', 'กำลังซิงค์...');
+  fbRef.set(DB)
+    .then(() => setSyncStatus('connected', 'ซิงค์แล้ว'))
+    .catch(() => setSyncStatus('error', 'ซิงค์ไม่สำเร็จ'));
+}
+
+function setSyncStatus(state, text) {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-text');
+  if(dot){ dot.className = 'sync-dot ' + state; }
+  if(label) label.textContent = text;
+}
+
+function loadScript(src) {
+  return new Promise((res,rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ===========================
+// GMAIL / EMAILJS
+// ===========================
+let gmailConfig = null;
+let gmailTags = [];
+
+function loadGmailConfig() {
+  try { return JSON.parse(localStorage.getItem(GMAIL_CONFIG_KEY) || 'null'); } catch(e){ return null; }
+}
+function saveGmailConfig() {
+  const cfg = {
+    serviceId: document.getElementById('ejs-service').value.trim(),
+    templateId: document.getElementById('ejs-template').value.trim(),
+    pubKey: document.getElementById('ejs-pubkey').value.trim(),
+    emails: [...gmailTags],
+    notifyDays: Number(document.getElementById('notify-days').value)
+  };
+  if (!cfg.serviceId || !cfg.templateId || !cfg.pubKey) { showSnack('⚠ กรุณากรอก EmailJS Config','#ef4444'); return; }
+  localStorage.setItem(GMAIL_CONFIG_KEY, JSON.stringify(cfg));
+  gmailConfig = cfg;
+  emailjs.init(cfg.pubKey);
+  closeModal('modal-gmail-setup');
+  showSnack('✅ บันทึกการตั้งค่า Gmail สำเร็จ');
+}
+
+function openGmailSetup() {
+  const cfg = loadGmailConfig() || {};
+  document.getElementById('ejs-service').value = cfg.serviceId || '';
+  document.getElementById('ejs-template').value = cfg.templateId || '';
+  document.getElementById('ejs-pubkey').value = cfg.pubKey || '';
+  document.getElementById('notify-days').value = cfg.notifyDays || 7;
+  gmailTags = cfg.emails || [];
+  renderGmailTags();
+  openModal('modal-gmail-setup');
+}
+
+function addGmailTag(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = document.getElementById('gmail-input').value.trim().replace(/,$/,'');
+    if (val && val.includes('@') && !gmailTags.includes(val)) {
+      gmailTags.push(val);
+      renderGmailTags();
+    }
+    document.getElementById('gmail-input').value = '';
+  }
+}
+function removeGmailTag(email) {
+  gmailTags = gmailTags.filter(e => e !== email);
+  renderGmailTags();
+}
+function renderGmailTags() {
+  const container = document.getElementById('gmail-tags');
+  container.innerHTML = gmailTags.map(e =>
+    `<div class="tag-chip"><i class="ti ti-mail" style="font-size:11px;color:var(--acc)"></i>${e}<button onclick="removeGmailTag('${e}')" title="ลบ">×</button></div>`
+  ).join('');
+}
+
+async function sendGmailAlert(email, subject, message) {
+  if (!gmailConfig) return false;
+  try {
+    await emailjs.send(gmailConfig.serviceId, gmailConfig.templateId, {
+      to_email: email,
+      subject,
+      message
+    });
+    return true;
+  } catch(err) {
+    console.error('EmailJS error:', err);
+    return false;
+  }
+}
+
+async function sendAllAlertEmails() {
+  if (!gmailConfig || !gmailConfig.emails || gmailConfig.emails.length === 0) {
+    showSnack('⚠ กรุณาตั้งค่า Gmail ก่อน', '#ef4444');
+    openGmailSetup();
+    return;
+  }
+  const alerts = getAlertItems();
+  if (alerts.length === 0) { showSnack('ℹ ไม่มีการแจ้งเตือนในขณะนี้', '#4f8ef7'); return; }
+
+  const message = alerts.map(a => `• ${a.title}: ${a.sub}`).join('\n');
+  const subject = `[MachineReg] แจ้งเตือน PM ${alerts.length} รายการ`;
+  let sent = 0;
+  for (const email of gmailConfig.emails) {
+    const ok = await sendGmailAlert(email, subject, message);
+    if (ok) sent++;
+  }
+  showSnack(`✅ ส่งแจ้งเตือนไปยัง ${sent} อีเมลสำเร็จ`);
+}
+
+async function testGmailNotify() {
+  const cfg = {
+    serviceId: document.getElementById('ejs-service').value.trim(),
+    templateId: document.getElementById('ejs-template').value.trim(),
+    pubKey: document.getElementById('ejs-pubkey').value.trim(),
+  };
+  const emails = [...gmailTags];
+  if (!cfg.serviceId || !cfg.pubKey || emails.length === 0) { showSnack('⚠ กรอก EmailJS Config และอีเมลก่อน','#ef4444'); return; }
+  emailjs.init(cfg.pubKey);
+  const ok = await sendGmailAlert(emails[0], '[MachineReg] ทดสอบระบบแจ้งเตือน', 'ระบบแจ้งเตือน MachineReg ทำงานปกติ ✓');
+  if (ok) showSnack('✅ ส่ง Email ทดสอบสำเร็จ');
+  else showSnack('⚠ ส่ง Email ไม่สำเร็จ กรุณาตรวจสอบ Config', '#ef4444');
+}
+
+// Auto daily alert check
+function checkAndSendDailyAlerts() {
+  if (!gmailConfig) return;
+  const lastSent = localStorage.getItem('machineReg_lastAlert');
+  const today = new Date().toDateString();
+  if (lastSent === today) return; // already sent today
+  const alerts = getAlertItems();
+  if (alerts.length > 0) {
+    sendAllAlertEmails();
+    localStorage.setItem('machineReg_lastAlert', today);
+  }
+}
+
+// ===========================
+// UTILS
+// ===========================
+const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function formatThaiDate(ds) {
+  if(!ds) return '—';
+  const d = new Date(ds); if(isNaN(d)) return ds;
+  return `${d.getDate()} ${thMonths[d.getMonth()]} ${d.getFullYear()+543-2500+100}`;
+}
+function todayISO() { return new Date().toISOString().split('T')[0]; }
+function showSnack(msg, color='#22c55e') {
+  const s=document.getElementById('snackbar');
+  document.getElementById('snack-msg').textContent=msg;
+  s.style.background=color; s.classList.add('show');
+  setTimeout(()=>s.classList.remove('show'),2800);
+}
+
+// ===========================
+// NAVIGATION
+// ===========================
+const ALL_PAGES=['dashboard','machines','detail','maintenance','plan','hours','alerts','report'];
+function showPage(id) {
+  // Restrict technician
+  if (CURRENT_USER && CURRENT_USER.role === 'technician') {
+    const restricted = ['dashboard','report'];
+    if (restricted.includes(id)) { showSnack('⚠ ไม่มีสิทธิ์เข้าถึงหน้านี้','#ef4444'); return; }
+  }
+  ALL_PAGES.forEach(p=>document.getElementById('page-'+p).classList.add('hidden'));
+  document.getElementById('page-'+id).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.remove('active');
+    if((n.getAttribute('onclick')||'').includes("'"+id+"'")) n.classList.add('active');
+  });
+  window.scrollTo(0,0);
+  if(id==='machines') renderMachineGrid();
+  if(id==='maintenance') renderMaintenanceTable();
+  if(id==='hours') renderHoursPage();
+  if(id==='dashboard') updateDashboard();
+  if(id==='plan') renderPlanTable();
+  if(id==='alerts') renderAlertsPage();
+  if(id==='report') renderReport();
+}
+
+// ===========================
+// MODALS
+// ===========================
+function openModal(id) {
+  const today = todayISO();
+  if(id==='modal-maint') { populateMachineSelect('maint-machine'); const el=document.getElementById('maint-date'); if(el&&!el.value) el.value=today; }
+  if(id==='modal-hours') { populateMachineSelect('hours-machine'); const el=document.getElementById('hours-date'); if(el&&!el.value) el.value=today; }
+  if(id==='modal-gmail-setup') { openGmailSetup(); return; }
+  document.getElementById(id).classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+  document.querySelectorAll('#'+id+' [id$="-error"]').forEach(e=>e.style.display='none');
+}
+function closeOnBg(e,id){ if(e.target.classList.contains('modal-overlay')) closeModal(id); }
+function populateMachineSelect(sid) {
+  const sel=document.getElementById(sid); if(!sel) return;
+  if(DB.machines.length===0) { sel.innerHTML='<option value="">— ยังไม่มีเครื่องจักร —</option>'; return; }
+  sel.innerHTML=DB.machines.map(m=>`<option value="${m.id}">${m.id} — ${m.name}</option>`).join('');
+}
+
+// ===========================
+// MACHINE GRID
+// ===========================
+const mIcons={'ใช้งาน':'ti-settings-2','ซ่อมบำรุง':'ti-tool','หยุดใช้งาน':'ti-forbid'};
+const mIconBg={'ใช้งาน':'rgba(79,142,247,.12)','ซ่อมบำรุง':'rgba(239,68,68,.1)','หยุดใช้งาน':'rgba(90,99,121,.2)'};
+const mIconClr={'ใช้งาน':'var(--acc)','ซ่อมบำรุง':'var(--red)','หยุดใช้งาน':'var(--txt3)'};
+const sBadge={'ใช้งาน':'badge-grn','ซ่อมบำรุง':'badge-red','หยุดใช้งาน':'badge-gray'};
+
+function computePmProgress(m) {
+  const plans=(DB.pmPlans||[]).filter(p=>p.machineId===m.id&&p.dueDate&&p.status!=='เสร็จแล้ว');
+  if(plans.length===0) return m.pmProgress||0;
+  const today=new Date();today.setHours(0,0,0,0);
+  let maxPct=0;
+  plans.forEach(p=>{
+    const due=new Date(p.dueDate);due.setHours(0,0,0,0);
+    const diff=Math.round((due-today)/86400000);
+    let pct=diff<0?100:diff<=7?90:diff<=30?60:20;
+    maxPct=Math.max(maxPct,pct);
+  });
+  return maxPct;
+}
+
+function renderMachineGrid(filter='',statusF='',deptF='') {
+  const grid=document.getElementById('machine-grid');
+  const isEngineer = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  const filtered=DB.machines.filter(m=>{
+    const q=filter.toLowerCase();
+    const matchQ=!q||m.id.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)||(m.dept||'').includes(q)||(m.brand||'').toLowerCase().includes(q)||String(m.hours||0).includes(q);
+    const matchS=!statusF||m.status===statusF;
+    const matchD=!deptF||m.dept===deptF;
+    return matchQ&&matchS&&matchD;
+  });
+  let html=filtered.map(m=>{
+    const pm=computePmProgress(m);
+    const pmClr=pm>=80?'red':pm>=50?'amb':'grn';
+    return `<div class="mcard" onclick="showDetail('${m.id}')">
+      <div class="mcard-top">
+        <div>
+          <div class="mcard-id">${m.id}</div>
+          <div class="mcard-name">${m.name}</div>
+          <div class="mcard-info">แผนก: ${m.dept||'—'}</div>
+        </div>
+        <div class="mcard-icon" style="background:${mIconBg[m.status]||mIconBg['ใช้งาน']};color:${mIconClr[m.status]||mIconClr['ใช้งาน']}">
+          <i class="ti ${mIcons[m.status]||'ti-settings-2'}"></i>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--txt2);margin-bottom:10px">ยี่ห้อ: ${m.brand||'—'} | ปี: ${m.year||'—'} | ${(m.hours||0).toLocaleString()} ชม.</div>
+      <div class="progress-bar" style="margin-bottom:6px"><div class="progress-fill ${pmClr}" style="width:${pm}%"></div></div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">PM: ${pm}% ถึงกำหนด</div>
+      <div class="mcard-footer">
+        <span class="badge ${sBadge[m.status]||'badge-gray'}">${m.status}</span>
+        <span style="font-size:11px;color:var(--txt3)">${(m.hours||0).toLocaleString()} ชม.</span>
+      </div>
+    </div>`;
+  }).join('');
+  if (isEngineer) {
+    html+=`<div class="mcard" style="border:1px dashed var(--c4);display:flex;align-items:center;justify-content:center;cursor:pointer;min-height:160px;flex-direction:column;gap:8px;color:var(--txt3)" onclick="openAddMachineModal()">
+      <i class="ti ti-plus" style="font-size:28px;color:var(--c4)"></i>
+      <span style="font-size:13px">เพิ่มเครื่องจักรใหม่</span>
+    </div>`;
+  }
+  grid.innerHTML=html;
+}
+function filterMachines(q) { renderMachineGrid(q,document.getElementById('filter-status').value,document.getElementById('filter-dept').value); }
+
+// ===========================
+// ADD MACHINE
+// ===========================
+function openAddMachineModal() {
+  if (CURRENT_USER && CURRENT_USER.role !== 'engineer') { showSnack('⚠ เฉพาะวิศวกรเท่านั้น','#ef4444'); return; }
+  ['add-code','add-name','add-brand','add-model','add-year','add-value','add-location','add-tech','add-note'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('add-dept').value='ฝ่ายผลิต';
+  document.getElementById('add-status').value='ใช้งาน';
+  document.getElementById('modal-add').classList.add('show');
+}
+function saveMachine() {
+  const code=document.getElementById('add-code').value.trim();
+  const name=document.getElementById('add-name').value.trim();
+  const errEl=document.getElementById('add-error');
+  if(!code||!name){errEl.style.display='block';return;} errEl.style.display='none';
+  if(DB.machines.find(m=>m.id===code)){showSnack('⚠ รหัสนี้มีอยู่แล้ว','#ef4444');return;}
+  const nm={
+    id:code, name, brand:document.getElementById('add-brand').value.trim(),
+    model:document.getElementById('add-model').value.trim(), year:document.getElementById('add-year').value,
+    value:document.getElementById('add-value').value?Number(document.getElementById('add-value').value).toLocaleString():'',
+    dept:document.getElementById('add-dept').value, status:document.getElementById('add-status').value,
+    location:document.getElementById('add-location').value.trim(), tech:document.getElementById('add-tech').value.trim(),
+    hours:0, pmProgress:0, note:document.getElementById('add-note').value.trim()
+  };
+  DB.machines.push(nm); saveDB(); closeModal('modal-add');
+  showSnack(`✅ เพิ่มเครื่องจักร "${code}" สำเร็จ`);
+  showPage('machines');
+  setTimeout(()=>{ document.querySelectorAll('.mcard').forEach(c=>{ if(c.textContent.includes(code)) c.classList.add('new-card'); }); },100);
+  updateDashboard(); refreshMachineSelects();
+}
+
+// ===========================
+// MACHINE DETAIL
+// ===========================
+let _curId=null;
+function showDetail(machineId) {
+  const m=DB.machines.find(x=>x.id===machineId); if(!m) return;
+  _curId=machineId;
+  document.getElementById('detail-title').textContent=`${m.id} — ${m.name}`;
+  document.getElementById('detail-id').textContent=`รหัส: ${m.id}`;
+  document.getElementById('detail-name').textContent=m.name;
+  document.getElementById('detail-dept').textContent=m.dept||'—';
+  document.getElementById('detail-hours').textContent=(m.hours||0).toLocaleString();
+  document.getElementById('detail-brand').textContent=`${m.brand||''} ${m.model||''}`.trim()||'—';
+  document.getElementById('detail-year').textContent=m.year||'—';
+  document.getElementById('detail-value').textContent=m.value?m.value+' บาท':'—';
+  document.getElementById('detail-location').textContent=m.location||'—';
+  document.getElementById('detail-tech').textContent=m.tech||'—';
+  const tags=document.getElementById('detail-tags');
+  const pm=computePmProgress(m);
+  let pmBadge='';
+  if(pm>=80) pmBadge='<span class="badge badge-red">⚠ PM ด่วน</span>';
+  else if(pm>=50) pmBadge='<span class="badge badge-amb">PM ใกล้ถึงกำหนด</span>';
+  const roleTag = CURRENT_USER ? `<span class="badge badge-purple">${CURRENT_USER.role==='engineer'?'วิศวกร':'ช่าง'}</span>` : '';
+  tags.innerHTML=`<span class="badge ${sBadge[m.status]||'badge-gray'}">${m.status}</span><span class="badge badge-blue">${m.dept||'—'}</span>${pmBadge}`;
+  document.querySelectorAll('#detail-tab-bar .tab').forEach((t,i)=>{ t.classList.toggle('active',i===0); });
+  ['tab-history','tab-pm','tab-hours'].forEach((t,i)=>{ document.getElementById(t).classList.toggle('hidden',i!==0); });
+  renderDetailTimeline(machineId);
+  renderDetailPmList(machineId);
+  renderDetailHours(machineId);
+  showPage('detail');
+}
+function switchDetailTab(el,tid) {
+  document.querySelectorAll('#detail-tab-bar .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['tab-history','tab-pm','tab-hours'].forEach(t=>{ const el2=document.getElementById(t); if(el2) el2.classList.add('hidden'); });
+  const tgt=document.getElementById(tid); if(tgt) tgt.classList.remove('hidden');
+  if(tid==='tab-pm'&&_curId) renderDetailPmList(_curId);
+  if(tid==='tab-hours'&&_curId) renderDetailHours(_curId);
+}
+function renderDetailTimeline(mid) {
+  const records=DB.maintenance.filter(r=>r.machineId===mid);
+  const tl=document.getElementById('detail-timeline');
+  if(records.length===0){tl.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:12px 0">ยังไม่มีประวัติซ่อมบำรุง</div>';return;}
+  const canDelete = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  tl.innerHTML=records.map((r,i)=>`
+    <div class="tl-item">
+      <div class="tl-left">
+        <div class="tl-dot ${r.type==='PM'?'grn':'red'}"><i class="ti ${r.type==='PM'?'ti-check':'ti-tool'}" style="font-size:12px"></i></div>
+        ${i<records.length-1?'<div class="tl-line"></div>':''}
+      </div>
+      <div class="tl-content">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="tl-date">${r.date} · ${r.tech||'—'}</div>
+            <div class="tl-title">${r.type} — ${r.detail}</div>
+            <div class="tl-desc">ค่าใช้จ่าย: ${Number(r.cost||0).toLocaleString()} บาท
+              <span class="badge ${r.type==='PM'?'badge-blue':'badge-red'}" style="margin-left:6px">${r.type}</span>
+              <span class="badge badge-gray" style="margin-left:4px">${r.status||''}</span>
+            </div>
+          </div>
+          ${canDelete?`<button class="icontrl" onclick="deleteMaintRecord(${DB.maintenance.indexOf(r)})" title="ลบ"><i class="ti ti-trash" style="font-size:14px"></i></button>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+function renderDetailHours(mid) {
+  const records=DB.hours.filter(r=>r.machineId===mid);
+  const tbody=document.getElementById('detail-hours-table');
+  const canDelete = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  if(records.length===0){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--txt3);padding:16px">ยังไม่มีบันทึกชั่วโมง</td></tr>';return;}
+  tbody.innerHTML=records.map((r,i)=>`<tr>
+    <td>${r.date}</td><td>${r.runHours} ชม.</td><td>${(r.totalHours||0).toLocaleString()} ชม.</td>
+    <td>${r.recorder||'—'}</td><td>${r.note||'—'}</td>
+    <td>${canDelete?`<button class="icontrl" onclick="deleteHoursRecord(${DB.hours.indexOf(r)})" title="ลบ"><i class="ti ti-trash" style="font-size:13px"></i></button>`:''}</td>
+  </tr>`).join('');
+}
+function renderDetailPmList(mid) {
+  const plans=(DB.pmPlans||[]).filter(p=>p.machineId===mid);
+  const list=document.getElementById('detail-pm-list');
+  if(plans.length===0){list.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:12px 0">ยังไม่มีแผน PM</div>';return;}
+  const sbm={'รอดำเนินการ':'badge-amb','นัดหมายแล้ว':'badge-grn','เกินกำหนด':'badge-red','เสร็จแล้ว':'badge-blue'};
+  const today=new Date();today.setHours(0,0,0,0);
+  const canEdit = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  list.innerHTML=plans.map((p,i)=>{
+    const gi=(DB.pmPlans||[]).indexOf(p);
+    const dueTxt=p.dueDate?formatThaiDate(p.dueDate):(p.intervalHours?`ทุก ${p.intervalHours} ชม.`:'—');
+    let nextColor='';
+    if(p.dueDate){const due=new Date(p.dueDate);due.setHours(0,0,0,0);const diff=Math.round((due-today)/86400000);if(diff<0) nextColor='color:var(--red)';else if(diff<=7) nextColor='color:var(--amb)';}
+    return `<div class="pm-card">
+      <div class="pm-header">
+        <div class="pm-name">${p.pmName}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge ${sbm[p.status]||'badge-gray'}">${p.status}</span>
+          ${canEdit?`<button class="icontrl" onclick="openEditPmModal(${gi})" title="แก้ไข" style="color:var(--txt2)"><i class="ti ti-edit" style="font-size:13px"></i></button>
+          <button class="icontrl" onclick="deletePmPlan(${gi})" title="ลบ"><i class="ti ti-trash" style="font-size:13px"></i></button>`:''}
+        </div>
+      </div>
+      <div class="pm-freq">ทริกเกอร์: ${p.trigger}${p.intervalHours?' / ทุก '+p.intervalHours+' ชม.':''} · ช่าง: ${p.tech||'—'}</div>
+      <div class="pm-next" style="${nextColor}"><i class="ti ti-calendar"></i> กำหนด: ${dueTxt}${p.detail?' · '+p.detail:''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===========================
+// EDIT / DELETE MACHINE
+// ===========================
+function openEditMachineModal() {
+  if (CURRENT_USER && CURRENT_USER.role !== 'engineer') { showSnack('⚠ เฉพาะวิศวกรเท่านั้น','#ef4444'); return; }
+  const m=DB.machines.find(x=>x.id===_curId); if(!m) return;
+  document.getElementById('edit-code').value=m.id;
+  document.getElementById('edit-name').value=m.name;
+  document.getElementById('edit-brand').value=m.brand||'';
+  document.getElementById('edit-model').value=m.model||'';
+  document.getElementById('edit-year').value=m.year||'';
+  document.getElementById('edit-value').value=m.value?(m.value+'').replace(/,/g,''):'';
+  document.getElementById('edit-dept').value=m.dept||'ฝ่ายผลิต';
+  document.getElementById('edit-status').value=m.status||'ใช้งาน';
+  document.getElementById('edit-location').value=m.location||'';
+  document.getElementById('edit-tech').value=m.tech||'';
+  document.getElementById('edit-note').value=m.note||'';
+  document.getElementById('modal-edit').classList.add('show');
+}
+function saveEditMachine() {
+  const m=DB.machines.find(x=>x.id===_curId); if(!m) return;
+  const name=document.getElementById('edit-name').value.trim();
+  if(!name){showSnack('⚠ กรุณากรอกชื่อเครื่องจักร','#ef4444');return;}
+  m.name=name; m.brand=document.getElementById('edit-brand').value.trim();
+  m.model=document.getElementById('edit-model').value.trim(); m.year=document.getElementById('edit-year').value;
+  const val=document.getElementById('edit-value').value;
+  m.value=val?Number(val).toLocaleString():'';
+  m.dept=document.getElementById('edit-dept').value; m.status=document.getElementById('edit-status').value;
+  m.location=document.getElementById('edit-location').value.trim(); m.tech=document.getElementById('edit-tech').value.trim();
+  m.note=document.getElementById('edit-note').value.trim();
+  DB.maintenance.forEach(r=>{if(r.machineId===m.id) r.machineName=m.name;});
+  DB.hours.forEach(r=>{if(r.machineId===m.id) r.machineName=m.name;});
+  saveDB(); closeModal('modal-edit'); showDetail(m.id); updateDashboard(); refreshMachineSelects();
+  showSnack(`✅ แก้ไข ${m.id} สำเร็จ`);
+}
+function deleteMachineFromDetail() {
+  if (CURRENT_USER && CURRENT_USER.role !== 'engineer') { showSnack('⚠ เฉพาะวิศวกรเท่านั้น','#ef4444'); return; }
+  const m=DB.machines.find(x=>x.id===_curId); if(!m) return;
+  const mc=DB.maintenance.filter(r=>r.machineId===_curId).length;
+  const hc=DB.hours.filter(r=>r.machineId===_curId).length;
+  const pc=(DB.pmPlans||[]).filter(r=>r.machineId===_curId).length;
+  if(!confirm(`ลบ "${m.id} — ${m.name}" ?\nจะลบข้อมูลที่เกี่ยวข้อง:\n• ซ่อมบำรุง ${mc} รายการ\n• ชั่วโมง ${hc} รายการ\n• แผน PM ${pc} รายการ`)) return;
+  DB.machines=DB.machines.filter(x=>x.id!==_curId);
+  DB.maintenance=DB.maintenance.filter(r=>r.machineId!==_curId);
+  DB.hours=DB.hours.filter(r=>r.machineId!==_curId);
+  DB.pmPlans=(DB.pmPlans||[]).filter(r=>r.machineId!==_curId);
+  saveDB(); showPage('machines'); updateDashboard(); refreshMachineSelects();
+  showSnack(`🗑 ลบ ${_curId} และข้อมูลที่เกี่ยวข้องแล้ว`,'#ef4444');
+}
+
+// ===========================
+// MAINTENANCE
+// ===========================
+function openMaintFromDetail() {
+  openModal('modal-maint');
+  if(_curId){ setTimeout(()=>{ const sel=document.getElementById('maint-machine'); if(sel) sel.value=_curId; },10); }
+}
+function saveMaintenance() {
+  const machineVal=document.getElementById('maint-machine').value;
+  const detail=document.getElementById('maint-detail').value.trim();
+  const errEl=document.getElementById('maint-error');
+  if(!machineVal||!detail){errEl.style.display='block';return;} errEl.style.display='none';
+  const machine=DB.machines.find(m=>m.id===machineVal)||{id:machineVal,name:machineVal};
+  const type=document.getElementById('maint-type').value;
+  const dateVal=document.getElementById('maint-date').value;
+  const rec={
+    date:dateVal?formatThaiDate(dateVal):'วันนี้',
+    machineId:machine.id, machineName:machine.name, type, detail,
+    tech:document.getElementById('maint-tech').value.trim()||CURRENT_USER?.name||'ผู้ใช้งาน',
+    cost:document.getElementById('maint-cost').value||'0',
+    status:document.getElementById('maint-status').value, _new:true
+  };
+  DB.maintenance.unshift(rec); saveDB(); closeModal('modal-maint');
+  showSnack(`✅ บันทึกการซ่อม ${machine.id} สำเร็จ`);
+  ['maint-tech','maint-hours','maint-duration','maint-cost','maint-detail'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderMaintenanceTable(); renderDashboardHours();
+  if(_curId===machineVal){ renderDetailTimeline(machineVal); }
+  updateDashboard();
+}
+function renderMaintenanceTable(filter='',typeFilter='') {
+  const tbody=document.getElementById('maint-table-body');
+  const wrap=document.getElementById('maint-table-wrap');
+  const empty=document.getElementById('maint-empty');
+  const filtered=DB.maintenance.filter(r=>{
+    const q=filter.toLowerCase();
+    const matchQ=!q||r.machineId.toLowerCase().includes(q)||(r.machineName||'').toLowerCase().includes(q)||r.detail.toLowerCase().includes(q);
+    const matchT=!typeFilter||r.type===typeFilter;
+    return matchQ&&matchT;
+  });
+  if(filtered.length===0){if(wrap)wrap.style.display='none';if(empty)empty.style.display='block';return;}
+  if(wrap)wrap.style.display='';if(empty)empty.style.display='none';
+  const sbm={'เสร็จแล้ว':'badge-grn','รอดำเนินการ':'badge-amb','กำลังดำเนินการ':'badge-blue'};
+  const canDelete = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  tbody.innerHTML=filtered.map((r,i)=>`<tr class="${i===0&&r._new?'new-row':''}">
+    <td>${r.date}</td><td>${r.machineId}</td><td>${r.machineName||'—'}</td>
+    <td><span class="badge ${r.type==='PM'?'badge-blue':'badge-red'}">${r.type}</span></td>
+    <td>${r.detail}</td><td>${r.tech||'—'}</td>
+    <td>${Number(r.cost||0).toLocaleString()} ฿</td>
+    <td><span class="badge ${sbm[r.status]||'badge-gray'}">${r.status||'—'}</span></td>
+    <td>${canDelete?`<button class="icontrl" onclick="deleteMaintRecord(${DB.maintenance.indexOf(r)})" title="ลบ"><i class="ti ti-trash" style="font-size:13px"></i></button>`:''}</td>
+  </tr>`).join('');
+}
+function filterMaintenance(q) { renderMaintenanceTable(q,document.getElementById('filter-maint-type').value); }
+function deleteMaintRecord(idx) {
+  if(!confirm('ลบประวัติซ่อมบำรุงรายการนี้?')) return;
+  DB.maintenance.splice(idx,1); saveDB();
+  renderMaintenanceTable(); if(_curId) renderDetailTimeline(_curId);
+  updateDashboard(); showSnack('🗑 ลบแล้ว','#ef4444');
+}
+
+// ===========================
+// HOURS
+// ===========================
+function openHoursFromDetail() { openHoursModal(); if(_curId){ setTimeout(()=>{ const sel=document.getElementById('hours-machine'); if(sel) sel.value=_curId; },10); } }
+function saveHours() {
+  const machineVal=document.getElementById('hours-machine').value;
+  const dateVal=document.getElementById('hours-date').value;
+  const currentHours=parseFloat(document.getElementById('hours-current').value);
+  const runHours=parseFloat(document.getElementById('hours-run').value)||0;
+  const editIdx=document.getElementById('hours-edit-idx').value;
+  const errEl=document.getElementById('hours-error');
+  if(!machineVal||!dateVal||isNaN(currentHours)){errEl.style.display='block';return;} errEl.style.display='none';
+  const machine=DB.machines.find(m=>m.id===machineVal);
+  if(!machine){showSnack('⚠ ไม่พบเครื่องจักร','#ef4444');return;}
+  if(editIdx!==''){
+    const oldRec=DB.hours[Number(editIdx)];
+    if(oldRec){const oldMachine=DB.machines.find(m=>m.id===oldRec.machineId);if(oldMachine) oldMachine.hours=Math.max(0,(oldMachine.hours||0)-oldRec.runHours);}
+  }
+  machine.hours=currentHours;
+  const rec={
+    date:formatThaiDate(dateVal), machineId:machine.id, machineName:machine.name,
+    runHours, totalHours:machine.hours,
+    recorder:document.getElementById('hours-recorder').value.trim()||CURRENT_USER?.name||'ผู้ใช้งาน',
+    note:document.getElementById('hours-note').value.trim(), _new:true
+  };
+  if(editIdx!==''){DB.hours[Number(editIdx)]=rec;showSnack(`✅ แก้ไขบันทึกชั่วโมงเดิน ${currentHours} ชม. สำหรับ ${machine.id} สำเร็จ`);}
+  else{DB.hours.unshift(rec);showSnack(`✅ บันทึกชั่วโมงเดิน ${currentHours} ชม. สำหรับ ${machine.id} สำเร็จ`);}
+  saveDB(); closeModal('modal-hours');
+  ['hours-current','hours-run','hours-recorder','hours-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('hours-edit-idx').value='';
+  renderHoursPage();
+  if(_curId===machineVal){renderDetailHours(machineVal);document.getElementById('detail-hours').textContent=(machine.hours).toLocaleString();}
+  updateDashboard();
+}
+function renderHoursPage(filter='') {
+  const tbody=document.getElementById('hours-table-body');
+  const wrap=document.getElementById('hours-table-wrap');
+  const empty=document.getElementById('hours-empty');
+  const totalHours=DB.machines.reduce((s,m)=>s+(m.hours||0),0);
+  document.getElementById('hours-total-all').textContent=totalHours.toLocaleString();
+  document.getElementById('hours-record-count').textContent=DB.hours.length;
+  const topM=[...DB.machines].sort((a,b)=>(b.hours||0)-(a.hours||0))[0];
+  if(topM){document.getElementById('hours-top-machine').textContent=topM.id;document.getElementById('hours-top-sub').textContent=`${(topM.hours||0).toLocaleString()} ชม. สะสม`;}
+  else{document.getElementById('hours-top-machine').textContent='—';document.getElementById('hours-top-sub').textContent='—';}
+  const filtered=DB.hours.filter(r=>{
+    const q=filter.toLowerCase();
+    return !q||r.machineId.toLowerCase().includes(q)||(r.machineName||'').toLowerCase().includes(q)||(r.recorder||'').toLowerCase().includes(q);
+  });
+  if(filtered.length===0){if(wrap)wrap.style.display='none';if(empty)empty.style.display='block';return;}
+  if(wrap)wrap.style.display='';if(empty)empty.style.display='none';
+  const canEdit = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  tbody.innerHTML=filtered.map((r,i)=>`<tr class="${i===0&&r._new?'new-row':''}">
+    <td>${r.date}</td><td>${r.machineId}</td><td>${r.machineName||'—'}</td>
+    <td>${r.runHours} ชม.</td><td>${(r.totalHours||0).toLocaleString()} ชม.</td>
+    <td>${r.recorder||'—'}</td><td>${r.note||'—'}</td>
+    <td style="display:flex;gap:6px">
+      ${canEdit?`<button class="icontrl" onclick="editHoursRecord(${DB.hours.indexOf(r)})" title="แก้ไข"><i class="ti ti-edit" style="font-size:13px"></i></button>
+      <button class="icontrl" onclick="deleteHoursRecord(${DB.hours.indexOf(r)})" title="ลบ"><i class="ti ti-trash" style="font-size:13px"></i></button>`:''}
+    </td>
+  </tr>`).join('');
+}
+function filterHours(q){ renderHoursPage(q); }
+function deleteHoursRecord(idx) {
+  if(!confirm('ลบบันทึกชั่วโมงรายการนี้?')) return;
+  const r=DB.hours[idx];
+  const m=DB.machines.find(x=>x.id===r.machineId);
+  if(m) m.hours=Math.max(0,(m.hours||0)-r.runHours);
+  DB.hours.splice(idx,1); saveDB();
+  renderHoursPage();
+  if(_curId&&r.machineId===_curId){renderDetailHours(_curId);const mc=DB.machines.find(x=>x.id===_curId);if(mc)document.getElementById('detail-hours').textContent=(mc.hours||0).toLocaleString();}
+  updateDashboard(); showSnack('🗑 ลบบันทึกชั่วโมงแล้ว','#ef4444');
+}
+function editHoursRecord(idx) {
+  const r=DB.hours[idx]; if(!r) return;
+  document.getElementById('hours-machine').value=r.machineId;
+  document.getElementById('hours-date').value=r.date.split(' ')[0];
+  document.getElementById('hours-current').value=r.totalHours||0;
+  document.getElementById('hours-run').value=r.runHours||0;
+  document.getElementById('hours-recorder').value=r.recorder||'';
+  document.getElementById('hours-note').value=r.note||'';
+  document.getElementById('hours-edit-idx').value=idx;
+  document.getElementById('hours-modal-title').textContent='แก้ไขบันทึกชั่วโมงเดิน';
+  document.getElementById('modal-hours').classList.add('show');
+}
+function openHoursModal() {
+  document.getElementById('hours-edit-idx').value='';
+  document.getElementById('hours-modal-title').textContent='บันทึกชั่วโมงเดิน';
+  openModal('modal-hours');
+}
+
+// ===========================
+// PM PLANS
+// ===========================
+function openPmModal() {
+  if (CURRENT_USER && CURRENT_USER.role !== 'engineer') { showSnack('⚠ เฉพาะวิศวกรเท่านั้น','#ef4444'); return; }
+  document.getElementById('pm-edit-idx').value='';
+  document.getElementById('pm-modal-title').innerHTML='<i class="ti ti-calendar-plus" style="color:var(--acc)"></i> เพิ่มแผน PM';
+  ['pm-name','pm-tech','pm-detail'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('pm-interval-hours').value='';
+  document.getElementById('pm-due-date').value='';
+  document.getElementById('pm-status').value='รอดำเนินการ';
+  document.getElementById('pm-trigger').value='ชั่วโมงเดิน';
+  populateMachineSelect('pm-machine');
+  document.getElementById('modal-pm').classList.add('show');
+}
+function openPmModalForMachine() {
+  openPmModal();
+  if(_curId){ setTimeout(()=>{ const sel=document.getElementById('pm-machine'); if(sel) sel.value=_curId; },10); }
+}
+function openEditPmModal(i) {
+  const p=(DB.pmPlans||[])[i]; if(!p) return;
+  document.getElementById('pm-edit-idx').value=i;
+  document.getElementById('pm-modal-title').innerHTML='<i class="ti ti-calendar-check" style="color:var(--acc)"></i> แก้ไขแผน PM';
+  populateMachineSelect('pm-machine');
+  document.getElementById('pm-machine').value=p.machineId;
+  document.getElementById('pm-name').value=p.pmName||'';
+  document.getElementById('pm-trigger').value=p.trigger||'ชั่วโมงเดิน';
+  document.getElementById('pm-interval-hours').value=p.intervalHours||'';
+  document.getElementById('pm-due-date').value=p.dueDate||'';
+  document.getElementById('pm-tech').value=p.tech||'';
+  document.getElementById('pm-status').value=p.status||'รอดำเนินการ';
+  document.getElementById('pm-detail').value=p.detail||'';
+  document.getElementById('modal-pm').classList.add('show');
+}
+function savePmPlan() {
+  const machineId=document.getElementById('pm-machine').value;
+  const pmName=document.getElementById('pm-name').value.trim();
+  const errEl=document.getElementById('pm-error');
+  if(!machineId||!pmName){errEl.style.display='block';return;} errEl.style.display='none';
+  if(!DB.pmPlans) DB.pmPlans=[];
+  const plan={
+    machineId, pmName, trigger:document.getElementById('pm-trigger').value,
+    intervalHours:document.getElementById('pm-interval-hours').value?Number(document.getElementById('pm-interval-hours').value):null,
+    dueDate:document.getElementById('pm-due-date').value||null,
+    tech:document.getElementById('pm-tech').value.trim(),
+    status:document.getElementById('pm-status').value,
+    detail:document.getElementById('pm-detail').value.trim()
+  };
+  const idx=document.getElementById('pm-edit-idx').value;
+  if(idx!==''){DB.pmPlans[Number(idx)]=plan;showSnack('✅ แก้ไขแผน PM สำเร็จ');}
+  else{DB.pmPlans.push(plan);showSnack('✅ เพิ่มแผน PM สำเร็จ');}
+  saveDB(); closeModal('modal-pm'); renderPlanTable(); updateDashboard();
+  if(_curId&&machineId===_curId) renderDetailPmList(_curId);
+  renderMachineGrid();
+}
+function deletePmPlan(i) {
+  if(!confirm('ลบแผน PM รายการนี้?')) return;
+  DB.pmPlans.splice(i,1); saveDB(); renderPlanTable(); updateDashboard();
+  if(_curId) renderDetailPmList(_curId);
+  renderMachineGrid(); showSnack('🗑 ลบแผน PM แล้ว','#ef4444');
+}
+function markPmDone(i) {
+  if(DB.pmPlans&&DB.pmPlans[i]){ DB.pmPlans[i].status='เสร็จแล้ว'; saveDB(); updateDashboard(); renderPlanTable(); renderAlertsPage(); renderMachineGrid(); showSnack('✅ ทำเสร็จแล้ว'); }
+}
+function renderPlanTable() {
+  const tbody=document.getElementById('plan-table-body');
+  const wrap=document.getElementById('plan-table-wrap');
+  const empty=document.getElementById('plan-empty');
+  if(!tbody) return;
+  const plans=DB.pmPlans||[];
+  if(plans.length===0){if(wrap)wrap.style.display='none';if(empty)empty.style.display='block';return;}
+  if(wrap)wrap.style.display='';if(empty)empty.style.display='none';
+  const sbm={'รอดำเนินการ':'badge-amb','นัดหมายแล้ว':'badge-grn','เกินกำหนด':'badge-red','เสร็จแล้ว':'badge-blue'};
+  const today=new Date();today.setHours(0,0,0,0);
+  const canEdit = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  tbody.innerHTML=plans.map((p,i)=>{
+    const m=DB.machines.find(x=>x.id===p.machineId);
+    const dueTxt=p.dueDate?formatThaiDate(p.dueDate):(p.intervalHours?`ทุก ${p.intervalHours} ชม.`:'—');
+    let dueCls='';
+    if(p.dueDate){const due=new Date(p.dueDate);due.setHours(0,0,0,0);const diff=Math.round((due-today)/86400000);if(diff<0&&p.status!=='เสร็จแล้ว') dueCls='style="color:var(--red);font-weight:600"';else if(diff<=7&&p.status!=='เสร็จแล้ว') dueCls='style="color:var(--amb)"';}
+    return `<tr>
+      <td>${p.machineId}${m?' — '+m.name:''}</td>
+      <td>${p.pmName}</td>
+      <td ${dueCls}>${dueTxt}</td>
+      <td>${p.trigger}</td><td>${p.tech||'—'}</td>
+      <td><span class="badge ${sbm[p.status]||'badge-gray'}">${p.status}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        ${canEdit?`<button class="btn btn-ghost btn-sm" onclick="openEditPmModal(${i})"><i class="ti ti-edit"></i> แก้ไข</button>`:''}
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-maint')"><i class="ti ti-tool"></i> บันทึกซ่อม</button>
+        ${canEdit?`<button class="btn btn-danger btn-sm" onclick="deletePmPlan(${i})"><i class="ti ti-trash"></i></button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ===========================
+// ALERTS
+// ===========================
+function getAlertItems() {
+  const alerts=[];
+  const today=new Date();today.setHours(0,0,0,0);
+  const notifyDays = (gmailConfig && gmailConfig.notifyDays) || 7;
+  (DB.pmPlans||[]).forEach((p,idx)=>{
+    if(!p.dueDate||p.status==='เสร็จแล้ว') return;
+    const due=new Date(p.dueDate);due.setHours(0,0,0,0);
+    const diff=Math.round((due-today)/86400000);
+    const m=DB.machines.find(x=>x.id===p.machineId);
+    const label=`${p.machineId}${m?' — '+m.name:''} · ${p.pmName}`;
+    if(diff<0) alerts.push({type:'red',icon:'ti-alert-triangle',title:label,sub:`เกินกำหนด ${Math.abs(diff)} วัน`,urgency:'เร่งด่วน',idx});
+    else if(diff<=notifyDays) alerts.push({type:'amb',icon:'ti-clock',title:label,sub:`ถึงกำหนดใน ${diff} วัน`,urgency:'เร็วๆนี้',idx});
+  });
+  return alerts;
+}
+function renderAlertsPage() {
+  const items=getAlertItems();
+  const page=document.getElementById('alerts-page-list');
+  const canMarkDone = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  if(items.length===0){
+    page.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--txt3)"><i class="ti ti-bell-off" style="font-size:48px;display:block;margin-bottom:12px"></i><div>ไม่มีการแจ้งเตือน</div></div>`;
+    return;
+  }
+  page.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px">`+items.map(a=>`
+    <div class="card" style="border-left:3px solid var(--${a.type})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div class="alert-icon ${a.type}" style="width:40px;height:40px;flex-shrink:0"><i class="ti ${a.icon}" style="font-size:18px"></i></div>
+          <div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px">${a.title}</div>
+            <div style="font-size:13px;color:var(--txt2)">${a.sub}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-maint')">บันทึกซ่อม</button>
+          ${canMarkDone?`<button class="btn btn-ghost btn-sm" onclick="markPmDone(${a.idx})">✓ เสร็จแล้ว</button>`:''}
+        </div>
+      </div>
+    </div>`).join('')+'</div>';
+}
+
+// ===========================
+// DASHBOARD
+// ===========================
+function renderDashboardHours() {
+  const tbody=document.getElementById('dash-hours-tbody'); if(!tbody) return;
+  const recent=DB.hours.slice(0,10);
+  if(recent.length===0){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--txt3);padding:16px">ยังไม่มีข้อมูล</td></tr>';return;}
+  tbody.innerHTML=recent.map(r=>`<tr><td>${r.date}</td><td>${r.machineId}</td><td>${r.runHours} ชม.</td><td>${(r.totalHours||0).toLocaleString()} ชม.</td><td>${r.recorder||'—'}</td></tr>`).join('');
+}
+function renderDashPmTable() {
+  const tbody=document.getElementById('dash-pm-table-body'); if(!tbody) return;
+  const plans=(DB.pmPlans||[]).slice(0,6);
+  if(plans.length===0){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--txt3);padding:20px">ยังไม่มีแผน PM</td></tr>';return;}
+  const sbm={'รอดำเนินการ':'badge-amb','นัดหมายแล้ว':'badge-grn','เกินกำหนด':'badge-red','เสร็จแล้ว':'badge-blue'};
+  tbody.innerHTML=plans.map(p=>{
+    const m=DB.machines.find(x=>x.id===p.machineId);
+    const dueTxt=p.dueDate?formatThaiDate(p.dueDate):(p.intervalHours?`ทุก ${p.intervalHours} ชม.`:'—');
+    return `<tr><td>${p.machineId}${m?' — '+m.name:''}</td><td>${p.pmName}</td><td>${dueTxt}</td><td>${p.tech||'—'}</td><td><span class="badge ${sbm[p.status]||'badge-gray'}">${p.status}</span></td></tr>`;
+  }).join('');
+}
+function updateDashboard() {
+  const total=DB.machines.length;
+  const activeC=DB.machines.filter(m=>m.status==='ใช้งาน').length;
+  const repairC=DB.machines.filter(m=>m.status==='ซ่อมบำรุง').length;
+  const idleC=DB.machines.filter(m=>m.status==='หยุดใช้งาน').length;
+  document.getElementById('dash-total-machines').textContent=total;
+  document.getElementById('dash-machine-status').innerHTML=`<span class="stat-dot dot-grn"></span>${activeC} ใช้งาน &nbsp;<span class="stat-dot dot-red"></span>${repairC} ซ่อม`;
+  document.getElementById('dash-active-count').textContent=`${activeC} / ${total}`;
+  document.getElementById('dash-active-bar').style.width=total?`${Math.round(activeC/total*100)}%`:'0%';
+  document.getElementById('dash-repair-count').textContent=`${repairC} / ${total}`;
+  document.getElementById('dash-repair-bar').style.width=total?`${Math.round(repairC/total*100)}%`:'0%';
+  document.getElementById('dash-idle-count').textContent=`${idleC} / ${total}`;
+  document.getElementById('dash-idle-bar').style.width=total?`${Math.round(idleC/total*100)}%`:'0%';
+  const pmC=DB.maintenance.filter(r=>r.type==='PM').length;
+  const cmC=DB.maintenance.filter(r=>r.type==='CM').length;
+  const mTotal=pmC+cmC;
+  document.getElementById('dash-maint-count').textContent=mTotal;
+  document.getElementById('dash-maint-sub').innerHTML=`<span class="stat-dot dot-blue"></span>${pmC} PM &nbsp;<span class="stat-dot dot-red"></span>${cmC} CM`;
+  document.getElementById('dash-pm-bar').textContent=pmC; document.getElementById('dash-pm-bar').style.width=mTotal?`${Math.round(pmC/mTotal*100)}%`:'0%';
+  document.getElementById('dash-pm-val').textContent=pmC;
+  document.getElementById('dash-cm-bar').textContent=cmC; document.getElementById('dash-cm-bar').style.width=mTotal?`${Math.round(cmC/mTotal*100)}%`:'0%';
+  document.getElementById('dash-cm-val').textContent=cmC;
+  const totalH=DB.machines.reduce((s,m)=>s+(m.hours||0),0);
+  document.getElementById('dash-total-hours').textContent=totalH.toLocaleString();
+  const pmPlanC=(DB.pmPlans||[]).length;
+  const overdue=(DB.pmPlans||[]).filter(p=>{if(!p.dueDate||p.status==='เสร็จแล้ว')return false;const d=new Date(p.dueDate);d.setHours(0,0,0,0);const today=new Date();today.setHours(0,0,0,0);return d<today;}).length;
+  document.getElementById('dash-pm-total').textContent=pmPlanC;
+  document.getElementById('dash-pm-overdue-sub').innerHTML=overdue>0?`<span class="stat-dot dot-red"></span>${overdue} เกินกำหนด`:'ทุกแผนปกติ ✓';
+  const now=new Date();
+  document.getElementById('dash-update-time').textContent=`อัปเดต: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  const alertCount=getAlertItems().length;
+  const badge=document.getElementById('alert-badge');
+  if(badge){badge.textContent=alertCount;badge.style.display=alertCount>0?'':'none';}
+  const items=getAlertItems();
+  const dashBadge=document.getElementById('dash-alert-badge');
+  const dashList=document.getElementById('dash-alerts-list');
+  if(dashBadge){dashBadge.textContent=items.length+' รายการ';dashBadge.style.display=items.length>0?'':'none';}
+  if(dashList){
+    if(items.length===0){dashList.innerHTML='<div style="color:var(--txt3);font-size:13px;text-align:center;padding:12px 0">ไม่มีการแจ้งเตือน ✓</div>';}
+    else{dashList.innerHTML=items.map(a=>`<div class="alert-item"><div class="alert-icon ${a.type}"><i class="ti ${a.icon}"></i></div><div><div class="alert-title">${a.title}</div><div class="alert-sub">${a.sub}</div></div><div class="alert-time"><span class="badge badge-${a.type}">${a.urgency}</span></div></div>`).join('');}
+  }
+  renderDashPmTable();
+  renderDashboardHours();
+}
+
+// ===========================
+// REPORT
+// ===========================
+function renderReport() {
+  const pmCost=DB.maintenance.filter(r=>r.type==='PM').reduce((s,r)=>s+Number(r.cost||0),0);
+  const cmCost=DB.maintenance.filter(r=>r.type==='CM').reduce((s,r)=>s+Number(r.cost||0),0);
+  const total=DB.machines.length;
+  const active=DB.machines.filter(m=>m.status==='ใช้งาน').length;
+  document.getElementById('report-pm-cost').textContent=pmCost.toLocaleString();
+  document.getElementById('report-cm-cost').textContent=cmCost.toLocaleString();
+  document.getElementById('report-avail').textContent=total?`${Math.round(active/total*100)}%`:'—';
+  document.getElementById('report-total-machines').textContent=total;
+  const costChart=document.getElementById('report-cost-chart');
+  const costMap={};
+  DB.maintenance.forEach(r=>{ costMap[r.machineId]=(costMap[r.machineId]||0)+Number(r.cost||0); });
+  const costArr=Object.entries(costMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxCost=costArr.length?costArr[0][1]:0;
+  if(costArr.length===0){costChart.innerHTML='<div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">ยังไม่มีข้อมูล</div>';}
+  else{costChart.innerHTML=costArr.map(([id,c])=>`<div class="chart-row"><div class="chart-label">${id}</div><div class="chart-track"><div class="chart-fill" style="width:${maxCost?Math.round(c/maxCost*100):0}%;background:var(--acc)">${c.toLocaleString()}</div></div><div class="chart-val"></div></div>`).join('');}
+  const freqChart=document.getElementById('report-freq-chart');
+  const freqMap={};
+  DB.maintenance.forEach(r=>{ freqMap[r.machineId]=(freqMap[r.machineId]||0)+1; });
+  const freqArr=Object.entries(freqMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxFreq=freqArr.length?freqArr[0][1]:0;
+  const freqColors=['var(--red)','var(--amb)','var(--acc)','var(--grn)'];
+  if(freqArr.length===0){freqChart.innerHTML='<div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">ยังไม่มีข้อมูล</div>';}
+  else{freqChart.innerHTML=freqArr.map(([id,c],i)=>`<div class="chart-row"><div class="chart-label">${id}</div><div class="chart-track"><div class="chart-fill" style="width:${maxFreq?Math.round(c/maxFreq*100):0}%;background:${freqColors[Math.min(i,freqColors.length-1)]}">${c} ครั้ง</div></div><div class="chart-val"></div></div>`).join('');}
+}
+
+// ===========================
+// EXPORT / IMPORT / RESET
+// ===========================
+function exportHTML() {
+  const injected=`<script>(function(){try{localStorage.setItem('${STORAGE_KEY}',${JSON.stringify(JSON.stringify(DB))});}catch(e){}})()\x3c/script>`;
+  const exported=document.documentElement.outerHTML.replace('<head>','<head>'+injected);
+  const blob=new Blob([exported],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const d=new Date(); a.download=`machine-registry-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.html`;
+  a.click(); URL.revokeObjectURL(a.href);
+  showSnack('📥 Export ไฟล์สำเร็จ');
+}
+function importHTML(event) {
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const html=e.target.result;
+      const match=html.match(/localStorage\.setItem\('machineReg_v1',\s*"((?:[^"\\]|\\.)*)"\)/);
+      if(match){
+        const raw=match[1].replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(JSON.parse(raw)));
+        showSnack('✅ Import สำเร็จ — กำลังโหลด...','#4f8ef7');
+        setTimeout(()=>location.reload(),1200);
+      } else showSnack('⚠ ไม่พบข้อมูลในไฟล์','#ef4444');
+    } catch(e){ showSnack('⚠ ไฟล์ไม่ถูกต้อง','#ef4444'); }
+    event.target.value='';
+  };
+  reader.readAsText(file,'utf-8');
+}
+function resetAllData() {
+  if(!confirm('⚠ ล้างข้อมูลทั้งหมด?\nไม่สามารถย้อนกลับได้')) return;
+  localStorage.removeItem(STORAGE_KEY); location.reload();
+}
+
+// ===========================
+// HELPERS
+// ===========================
+function refreshMachineSelects() {
+  populateMachineSelect('maint-machine');
+  populateMachineSelect('hours-machine');
+  populateMachineSelect('pm-machine');
+}
+
+function renderAll() {
+  renderMachineGrid();
+  renderMaintenanceTable();
+  renderHoursPage();
+  renderPlanTable();
+  updateDashboard();
+}
+
+// ===========================
+// INIT
+// ===========================
+function initApp() {
+  // Load Gmail config
+  gmailConfig = loadGmailConfig();
+  if (gmailConfig && gmailConfig.pubKey) {
+    emailjs.init(gmailConfig.pubKey);
+  }
+
+  // Load Firebase config and connect
+  const fbCfg = loadFirebaseConfig();
+  if (fbCfg && fbCfg.apiKey) {
+    initFirebase(fbCfg);
+  } else {
+    setSyncStatus('', 'ออฟไลน์ (ไม่ได้เชื่อม Firebase)');
+  }
+
+  // Initial render
+  renderAll();
+
+  // Determine first page based on role
+  const isEngineer = CURRENT_USER && CURRENT_USER.role === 'engineer';
+  if (isEngineer) {
+    // Engineer: go to Add Machine modal after showing machines page
+    showPage('machines');
+    setTimeout(() => openAddMachineModal(), 200);
+  } else {
+    // Technician: go directly to maintenance (their main task)
+    showPage('maintenance');
+  }
+
+  // Auto check alerts daily
+  setTimeout(() => checkAndSendDailyAlerts(), 3000);
+}
+
+// Check session on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const session = sessionStorage.getItem('machineReg_session');
+  if (session) {
+    try {
+      CURRENT_USER = JSON.parse(session);
+      document.getElementById('login-screen').classList.add('hidden');
+      applyRoleUI();
+      initApp();
+    } catch(e) {
+      // invalid session, show login
+    }
+  }
+  // Restore Firebase setup form if config exists
+  const fbCfg = loadFirebaseConfig();
+  if (fbCfg) {
+    document.getElementById('fb-apikey').value = fbCfg.apiKey || '';
+    document.getElementById('fb-projectid').value = fbCfg.projectId || '';
+    document.getElementById('fb-dburl').value = fbCfg.databaseURL || '';
+  }
+});
+</script>
+</body>
+</html>
